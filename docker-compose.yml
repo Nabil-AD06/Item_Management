@@ -1,0 +1,91 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: dockerfile
+
+    container_name: backend
+
+    volumes:
+      - ./Backend/Management:/app
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      - postgres
+      - keycloak
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+
+    container_name: frontend
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+
+    ports:
+      - "5173:5173"
+
+    stdin_open: true
+    tty: true
+
+    depends_on:
+      - backend
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+
+    container_name: keycloak
+
+    command: start-dev
+
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KC_SPI_THEME_CACHE_THEMES: "false"
+      KC_SPI_THEME_CACHE_TEMPLATES: "false"
+      KC_SPI_THEME_STATIC_MAX_AGE: "-1"
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ./keycloak/themes:/opt/keycloak/themes
+
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+
+    container_name: postgres
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: item_management
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:
+  

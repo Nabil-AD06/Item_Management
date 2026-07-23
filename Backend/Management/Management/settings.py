@@ -37,10 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'accounts',
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -116,3 +119,21 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# AUTH_USER_MODEL = "accounts.Admin"
+
+KEYCLOAK_SERVER_URL = "http://keycloak:8080"
+KEYCLOAK_REALM = "item-management"
+KEYCLOAK_CLIENT_ID = "backend"
+# Cette valeur doit correspondre exactement au champ "iss" du JWT
+KEYCLOAK_ISSUER = "http://localhost:8080/realms/item-management"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "authentication.authentication.KeycloakAuthentication",
+    ]
+}
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]

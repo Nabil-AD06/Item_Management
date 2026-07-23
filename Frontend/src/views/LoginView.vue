@@ -3,7 +3,7 @@
     <div class="content">
       <form class="login-card">
         <div class="card-header">
-            <img src="@/assets/logo.jpg" alt="Yazaki Logo" class="logo"/>
+          <img src="@/assets/logo.jpg" alt="Yazaki Logo" class="logo" />
           <h1>Welcom Back</h1>
         </div>
         <div>
@@ -18,13 +18,15 @@
           </div>
           <input type="password" placeholder="Enter your password" />
         </div>
+        <h4>
+          Don't you have an account ?
+          <RouterLink to="/register"> Sign Up</RouterLink>
+        </h4>
         <button>Sign In</button>
       </form>
     </div>
   </div>
 </template>
-
-
 
 <style scoped>
 .login-page {
@@ -37,17 +39,17 @@
   background-repeat: no-repeat;
 }
 
-.card-header{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 40px;
-    flex-direction: column;
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 40px;
+  flex-direction: column;
 }
-.logo{
-    width: 200px;
-    height: auto;
+.logo {
+  width: 200px;
+  height: auto;
 }
 .content {
   display: flex;
@@ -57,6 +59,10 @@
   justify-content: end;
   padding-right: 150px;
 }
+
+.login-card h4 {
+  color: black;
+}
 .login-card {
   padding: 50px;
   padding-top: 40px;
@@ -64,7 +70,7 @@
   /* display:flex; */
   justify-content: center;
   align-items: center;
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 12px;
   width: 600px;
 }
