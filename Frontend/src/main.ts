@@ -12,15 +12,15 @@ keycloak
   })
   .then(async(authenticated) => {
     if (!authenticated) return;
-    console.log(keycloak.token);
-    console.log(keycloak.tokenParsed);
+    // console.log(keycloak.token);
+    // console.log(keycloak.tokenParsed);
     const response = await fetch("http://localhost:8000/api/test/", {
       headers: {
         Authorization: `Bearer ${keycloak.token}`,
       },
     });
 
-    console.log(await response.json());
+    // console.log(await response.json());
     const app = createApp(App);
 
     app.use(router);
