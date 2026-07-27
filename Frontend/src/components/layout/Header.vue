@@ -7,22 +7,10 @@
     </div>
 
     <div class="actions">
-
-      <input
-        type="text"
-        placeholder="Search..."
-      />
-
-      <button>
-        🔔
-      </button>
-
       <div class="profile">
         AU
       </div>
-
     </div>
-
   </header>
 </template>
 <style>

@@ -40,3 +40,46 @@ class KeycloakService:
         )
 
         return payload
+
+    @staticmethod
+    def get_admin_token():
+        url =(
+            f"{settings.KEYCLOAK_SERVER_URL}"
+            f"/realms/{settings.KEYCLOAK_REALM}/protocol/openid-connect/token"
+        )
+
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": settings.KEYCLOAK_CLIENT_ID,
+            "client_secret": settings.KEYCLOAK_CLIENT_SECRET,
+        }
+
+        response = requests.post(url, data=data)
+        response.raise_for_status()
+
+        return response.json()["access_token"]
+
+    @staticmethod
+    def update_user(keycloak_id, username, email):
+        admin_token = KeycloakService.get_admin_token()
+        url = (
+
+            f"{settings.KEYCLOAK_SERVER_URL}"
+            f"/admin/realms/{settings.KEYCLOAK_REALM}"
+            f"/users/{keycloak_id}"
+            )
+        headers = {
+            "Authorization": f"Bearer {admin_token}",
+            "Content-Type": "application/json",
+            }
+        data = {
+            "username": username,
+            "email": email,
+            "enabled": True
+        }
+        response = requests.put(
+            url,
+            headers=headers,
+            json=data,
+        )
+        response.raise_for_status()
