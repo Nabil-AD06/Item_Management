@@ -2,11 +2,13 @@
   <div class="card">
     <h2>Profile Settings</h2>
     <div class="form-card">
-      <label>Username</label>
-      <input type="text" v-model="username" placeholder="New username" />
+      <label>First_name</label>
+      <input type="text" v-model="first_name" placeholder="New First_name" />
+      <label>Last_name</label>
+      <input type="text" v-model="last_name" placeholder="New Last_name" />
       <label>Email</label>
-      <input type="email" placeholder="New email" />
-      <button>Save</button>
+      <input type="email" v-model="email" placeholder="New email" />
+      <button @click="save">Save</button>
     </div>
   </div>
 </template>
@@ -15,23 +17,32 @@
 import { onMounted, ref } from 'vue';
 import { getProfile, updateProfile } from "@/services/profile.service";
 
-const username = ref("");
+const first_name = ref("");
+const last_name = ref("");
 const email = ref("");
 
 onMounted(async () => {
     const response = await getProfile();
 
-    username.value = response.data.username;
+    first_name.value = response.data.first_name;
+    last_name.value = response.data.last_name;
     email.value = response.data.email;
 });
 
 const save = async () => {
+  try{
     await updateProfile({
-        username: username.value,
+        first_name: first_name.value,
+        last_name: last_name.value,
         email: email.value,
     });
 
     alert("Profile updated successfully");
+
+     } catch (error) {
+        console.error(error);
+        alert("Failed to update profile");
+    }
 };
 
 </script>

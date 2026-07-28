@@ -3,15 +3,44 @@
     <h2>Profile Settings</h2>
     <div class="form-card">
       <label>Current Password</label>
-      <input type="text" placeholder="Current Password" />
+      <input type="text" v-model="current_password" placeholder="Current Password" />
       <label>new password</label>
-      <input type="password" placeholder="New Password" />
+      <input type="text" v-model="new_password" placeholder="New Password" />
       <label>Verify Password</label>
-      <input type="password" placeholder="Verify Password" />
-      <button>Save</button>
+      <input type="text" v-model="confirm_password" placeholder="Verify Password" />
+      <button @click="save">Save</button>
     </div>
   </div>
 </template>
+
+
+<script setup>
+import {ref} from 'vue';
+import {changePassword} from "@/services/profile.service"
+
+const current_password = ref("");
+const new_password = ref("");
+const confirm_password =ref("");
+
+const save = async () =>{
+  try{
+    await changePassword({
+      current_password : current_password.value,
+      new_password : new_password.value,
+      confirm_password : confirm_password.value,
+    });
+
+    alert("Password Updated Successfully");
+
+
+  }
+  catch(error) {
+    console.error(error);
+    alert("Failed to change password")
+  }
+};
+
+</script>
 
 <style scoped>
 .card {

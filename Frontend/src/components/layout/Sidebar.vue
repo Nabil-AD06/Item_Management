@@ -9,15 +9,26 @@
       </RouterLink>
     </nav>
     <div class="logout">
-      <RouterLink v-for="i in logItem" :key="i.path" :to="i.path">
-        <component :is="i.icon" />
-        <span>{{ i.name }}</span>
+      <RouterLink to="/Settings">
+        <Settings />
+        <span>Settings</span>
       </RouterLink>
+
+      <button @click="logout">
+        <LogOut />
+        <span>Logout</span>
+      </button>
     </div>
   </aside>
 </template>
 
 <script setup>
+import keycloak from "@/services/keycloak";
+
+const logout = () => {
+  keycloak.logout();
+};
+
 import {
   LayoutDashboard,
   Boxes,
@@ -51,6 +62,30 @@ aside {
   padding-left: 8px;
   display: flex;
   flex-direction: column;
+}
+
+.logout button {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  width: 100%;
+  height: 50px;
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+
+  color: white;
+  font-size: 140%;
+
+  cursor: pointer;
+}
+
+.logout button:hover {
+  background-color: #d71920;
+  border-radius: 8px;
+  margin-right: 10px;
+  margin-left: -4px;
 }
 
 .logout {

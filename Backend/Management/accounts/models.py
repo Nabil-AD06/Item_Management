@@ -4,6 +4,8 @@ class Admin(models.Model):
     keycloak_id = models.CharField(max_length=100, unique=True)
     username = models.CharField(max_length=100, unique=True)
     full_name = models.CharField(max_length=150)
+    first_name = models.CharField(max_length=100,default="")
+    last_name = models.CharField(max_length=100,default="")
     email = models.EmailField(unique=True)
     department = models.CharField(max_length=100, blank=True)
 

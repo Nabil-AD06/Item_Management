@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .serializers import LoginSerializer,ProfileUpdateSerializer
+from .serializers import LoginSerializer,ProfileUpdateSerializer,UpdatePassword , CreateNewAdmin
 from rest_framework import status
 from django.contrib.auth import authenticate
 from .models import Admin
@@ -62,36 +62,35 @@ class ProfileUpdateView(APIView):
         if serializer.is_valid():
             data = serializer.validated_data
             user = request.user
-            username = data["username"]
+            first_name = data["first_name"]
+            last_name = data["last_name"]
             email = data["email"]
             try:
                 # Mise à jour dans Keycloak
                 KeycloakService.update_user(
                     user.keycloak_id,
-                    username,
+                    first_name,
+                    last_name,
                     email,
                 )
                 # Synchronisation de la base locale
-                user.username = username
+                user.first_name = first_name
+                user.last_name = last_name
                 user.email = email
                 user.save()
                 return Response(
                     {
                         "message": "Profile updated successfully",
                         "user": {
-                            "username": user.username,
+                            "first_name": user.first_name,
+                            "last_name":user.last_name,
                             "email": user.email,
                         },
                     },
                     status=status.HTTP_200_OK,
                 )
-            except Exception as e:
-                return Response(
-                    {
-                        "error": str(e)
-                    },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+            except Exception:
+                raise
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
@@ -101,9 +100,58 @@ class ProfileUpdateView(APIView):
     
         return Response(
             {
-                "username": user.username,
+                "first_name": user.first_name,
+                "last_name":user.last_name,
                 "email": user.email,
             },
             status=status.HTTP_200_OK,
         )
-    
+
+
+class ChangePasswordView(APIView):
+
+    def post(self, request):
+        serializer = UpdatePassword(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        current_password = serializer.validated_data["current_password"]
+        new_password = serializer.validated_data["new_password"]
+
+        valid = KeycloakService.verifyCurrentPassword(
+            user.username,
+            current_password,
+        )
+
+        if not valid:
+            return Response(
+                {"current_password": "Current password is incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        KeycloakService.change_password(
+            user.keycloak_id,
+            new_password,
+        )
+
+        return Response(
+            {"message": "Password updated successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+class CreateAdminView(APIView):
+    def pst(self , request):
+        serializer = KeycloakService.CreateNewAdmin(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username =serializer.validate_data["username"]
+        first_name=serializer.valiate_data["first_name"]
+        last_name=serializer.valiate_dat["last_name"]
+        email=serializer.valiate_dat["emial"]
+        password=serializer.valiate_data["password"]
+        valid = KeycloakService.validate(
+                    
+                    password
+                )
+        
+        

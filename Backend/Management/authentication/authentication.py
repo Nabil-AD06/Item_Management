@@ -41,9 +41,14 @@ class KeycloakAuthentication(BaseAuthentication):
                 user.email = email
                 changed = True
             
-            full_name = payload.get("name", "")
-            if user.full_name != full_name:
-                user.full_name = full_name
+            first_name = payload.get("given_name", "")
+            if user.first_name != first_name:
+                user.first_name = first_name
+                changed = True
+
+            last_name = payload.get("family_name", "")
+            if user.last_name != last_name:
+                user.last_name = last_name
                 changed = True
 
             roles = payload.get("realm_access", {}).get("roles", [])

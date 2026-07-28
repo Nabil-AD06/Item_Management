@@ -2,7 +2,7 @@
   <header class="header">
 
     <div class="welcome">
-      <h1>Welcome back, Admin User 👋</h1>
+      <h1>Welcome back, {{first_name}} 👋</h1>
       <p>Here's what's happening with your workspace.</p>
     </div>
 
@@ -13,6 +13,13 @@
     </div>
   </header>
 </template>
+
+<script setup lang="ts">
+import keycloak from "@/services/keycloak";
+
+const first_name = keycloak.tokenParsed?.given_name;
+</script>
+
 <style>
 .header{
     height:90px;
@@ -30,6 +37,7 @@
 .welcome h1{
     font-size:34px;
     font-weight:700;
+    color: black;
 }
 
 .welcome p{

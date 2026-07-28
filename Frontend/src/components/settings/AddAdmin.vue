@@ -4,11 +4,21 @@
     <div class="form-card">
       <label>Username</label>
       <input type="text" placeholder="Enter Username" />
+      <div class="container">
+        <div class="field1">
+          <label>First name </label>
+          <input type="text" placeholder="Enter first name" />
+        </div>
+        <div class="field2">
+          <label>Last name</label>
+          <input type="text" placeholder="Enter last name" />
+        </div>
+      </div>
       <label>Email</label>
       <input type="email" placeholder="Enter email" />
       <label>Password</label>
       <input type="password" placeholder="Enter Password" />
-      <label>Verify Password</label>
+      <label>Confirm Password</label>
       <input type="password" placeholder="Verify Password" />
       <button>Save</button>
     </div>
@@ -25,11 +35,16 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
+.container {
+  display: flex;
+  flex-direction: row;
+}
+
 .form-card {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  margin-top:50px;
+  margin-top: 50px;
 }
 
 .card h2 {
@@ -53,6 +68,20 @@
   outline: none;
   transition: 0.3s;
 }
+
+.field1 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+  margin-right: 20px;
+}
+.field2 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+}
 .form-card input::placeholder {
   color: #9ca3af;
 }
@@ -69,8 +98,8 @@
   color: white;
   font-size: 16px;
   font-weight: 600;
-  margin-top:40px;
-  margin-bottom:50px;
+  margin-top: 40px;
+  margin-bottom: 50px;
   cursor: pointer;
   transition: 0.3s;
 }

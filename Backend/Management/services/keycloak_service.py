@@ -60,7 +60,7 @@ class KeycloakService:
         return response.json()["access_token"]
 
     @staticmethod
-    def update_user(keycloak_id, username, email):
+    def update_user(keycloak_id, first_name,last_name, email):
         admin_token = KeycloakService.get_admin_token()
         url = (
 
@@ -73,7 +73,8 @@ class KeycloakService:
             "Content-Type": "application/json",
             }
         data = {
-            "username": username,
+            "firstName": first_name,
+            "lastName": last_name,
             "email": email,
             "enabled": True
         }
@@ -83,3 +84,46 @@ class KeycloakService:
             json=data,
         )
         response.raise_for_status()
+    @staticmethod
+    def change_password(keycloak_id,new_password):
+        admin_token = KeycloakService.get_admin_token()
+        url=(
+            f"{settings.KEYCLOAK_SERVER_URL}"
+            f"/admin/realms/{settings.KEYCLOAK_REALM}"
+            f"/users/{keycloak_id}/reset-password"
+        )
+        headers = {
+            "authorization":f"Bearer {admin_token}",
+            "content-Type":"application/json",
+        }
+        data = {
+            "type": "password",
+            "value": new_password,
+            "temporary": False,
+        }
+        response = requests.put(
+            url,
+            headers=headers,
+            json=data,
+        )
+
+        response.raise_for_status()
+
+    @staticmethod
+    def verifyCurrentPassword(username, password):
+        url=(
+            f"{settings.KEYCLOAK_SERVER_URL}"
+            f"/realms/{settings.KEYCLOAK_REALM}"
+            f"/protocol/openid-connect/token"
+        )
+        data={
+            "client_id" :settings.KEYCLOAK_CLIENT_ID,
+            "client_secret":settings.KEYCLOAK_CLIENT_SECRET,
+            "grant_type":"password",
+            "username":username,
+            "password":password,
+        }
+        response = requests.post(url,data=data)
+        print(response.status_code)
+        print(response.text)
+        return response.status_code ==200
