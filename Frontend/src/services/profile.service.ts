@@ -19,3 +19,14 @@ export const changePassword = (data: {
 }) => {
   return api.post("/change-password/", data);
 };
+
+export const create_admin =(data : {
+  username :string;
+  first_name : string;
+  last_name : string;
+  email :string;
+  password: string;
+  confirm_password: string;
+}) =>{
+  return api.post("/create-admin/",data);
+};

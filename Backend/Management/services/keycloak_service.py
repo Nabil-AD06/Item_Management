@@ -127,3 +127,48 @@ class KeycloakService:
         print(response.status_code)
         print(response.text)
         return response.status_code ==200
+
+    @staticmethod
+    def create_user(username,first_name,
+                      last_name,email,password):
+        admin_token = KeycloakService.get_admin_token()
+        url =(
+            f"{settings.KEYCLOAK_SERVER_URL}"
+            f"/admin/realms/{settings.KEYCLOAK_REALM}"
+            f"/users"
+            )
+        headers = {
+            "Authorization": f"Bearer {admin_token}",
+            "Content-Type": "application/json",
+            }
+        data = {
+            "username": username,
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "enabled": True,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": password,
+                    "temporary": False
+                }
+            ]
+        }
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data,
+        )
+
+        response.raise_for_status()
+
+        location = response.headers.get("Location")
+
+        if not location:
+            raise Exception("Unable to retrieve Keycloak user ID.")
+
+        keycloak_id = location.rstrip("/").split("/")[-1]
+
+        return keycloak_id

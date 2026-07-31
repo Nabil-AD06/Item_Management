@@ -1,29 +1,87 @@
 <template>
   <div class="card">
     <h2>Add Admin</h2>
-    <div class="form-card">
-      <label>Username</label>
-      <input type="text" placeholder="Enter Username" />
-      <div class="container">
-        <div class="field1">
-          <label>First name </label>
-          <input type="text" placeholder="Enter first name" />
+    <form @submit.prevent="save">
+      <div class="form-card">
+        <label>Username</label>
+        <input type="text" v-model="username" placeholder="Enter Username" />
+        <div class="container">
+          <div class="field1">
+            <label>First name </label>
+            <input
+              type="text"
+              v-model="first_name"
+              placeholder="Enter first name"
+            />
+          </div>
+          <div class="field2">
+            <label>Last name</label>
+            <input
+              type="text"
+              v-model="last_name"
+              placeholder="Enter last name"
+            />
+          </div>
         </div>
-        <div class="field2">
-          <label>Last name</label>
-          <input type="text" placeholder="Enter last name" />
-        </div>
+        <label>Email</label>
+        <input type="email" v-model="email" placeholder="Enter email" />
+        <label>Password</label>
+        <input
+          type="password"
+          v-model="password"
+          placeholder="Enter Password"
+        />
+        <label>Confirm Password</label>
+        <input
+          type="password"
+          v-model="confirm_password"
+          placeholder="Verify Password"
+        />
+        <button type="submit">Save</button>
       </div>
-      <label>Email</label>
-      <input type="email" placeholder="Enter email" />
-      <label>Password</label>
-      <input type="password" placeholder="Enter Password" />
-      <label>Confirm Password</label>
-      <input type="password" placeholder="Verify Password" />
-      <button>Save</button>
-    </div>
+    </form>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref } from "vue";
+import { create_admin } from "@/services/profile.service";
+
+const username = ref("");
+const first_name = ref("");
+const last_name = ref("");
+const email = ref("");
+const password = ref("");
+const confirm_password = ref("");
+
+const save = async () => {
+  try {
+    if (password.value !== confirm_password.value) {
+      alert("Passwords do not match");
+      return;
+    }
+    await create_admin({
+      username: username.value,
+      first_name: first_name.value,
+      last_name: last_name.value,
+      email: email.value,
+      password: password.value,
+      confirm_password: confirm_password.value,
+    });
+
+    alert("Admin added Successfully");
+    username.value = "";
+    first_name.value = "";
+    last_name.value = "";
+    email.value = "";
+    password.value = "";
+    confirm_password.value = "";
+  } catch (error: any) {
+    console.error(error);
+    alert("error.response?.data?.error || Failed to add Admin");
+  }
+};
+</script>
 
 <style scoped>
 .card {

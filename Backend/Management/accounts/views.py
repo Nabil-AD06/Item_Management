@@ -45,16 +45,16 @@ class LoginView(APIView) :
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
-class TestView(APIView):
-    def get(sefl, requests) :
-        return Response({
-            "authenticated": requests.user.is_authenticated,
-            "id": requests.user.id,
-            "username": requests.user.username,
-            "email": requests.user.email,
-            "full_name": requests.user.full_name,
-            "department": requests.user.department,
-})
+# class TestView(APIView):
+#     def get(sefl, requests) :
+#         return Response({
+#             "authenticated": requests.user.is_authenticated,
+#             "id": requests.user.id,
+#             "username": requests.user.username,
+#             "email": requests.user.email,
+#             "full_name": requests.user.full_name,
+#             "department": requests.user.department,
+# })
 
 class ProfileUpdateView(APIView):
     def patch(self, request):
@@ -141,17 +141,38 @@ class ChangePasswordView(APIView):
         )
 
 class CreateAdminView(APIView):
-    def pst(self , request):
-        serializer = KeycloakService.CreateNewAdmin(data=request.data)
+    def post(self , request):
+        serializer = CreateNewAdmin(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username =serializer.validate_data["username"]
-        first_name=serializer.valiate_data["first_name"]
-        last_name=serializer.valiate_dat["last_name"]
-        email=serializer.valiate_dat["emial"]
-        password=serializer.valiate_data["password"]
-        valid = KeycloakService.validate(
-                    
-                    password
-                )
+        data=serializer.validated_data
+        username =data["username"]
+        first_name=data["first_name"]
+        last_name=data["last_name"]
+        email=data["email"]
+        password=data["password"]
+        try:
+            keycloak_id=KeycloakService.create_user(
+               username=username,
+               first_name=first_name,
+               last_name=last_name,
+               email=email,password=password,
+        )
+            Admin.objects.create(
+               keycloak_id=keycloak_id,
+               username=username,
+               first_name=first_name,
+               last_name=last_name,
+               email=email,
+        )
+            return Response(
+                {
+                    "message" : "Admin created successfully !"
+                },
+                status=status.HTTP_201_CREATED
+        )
+        except Exception as e:
+            return Response({"error": str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
         
         
