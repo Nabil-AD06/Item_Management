@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .models import Request , RequestItem
 
 class LoginSerializer(serializers.Serializer):
     email_or_username = serializers.CharField()
@@ -34,3 +35,37 @@ class CreateNewAdmin(serializers.Serializer):
                 {"confirm_password" : "Passwords do not match"}
             )
         return data
+
+class RequestItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RequestItem
+        fields = "__all__"
+        extra_kwargs = {
+            "request": {"read_only": True}
+        }
+
+
+class RequestSerializer(serializers.ModelSerializer):
+    items = RequestItemSerializer(
+        source="requestitem_set",
+        many=True)
+
+    class Meta:
+        model = Request
+        fields = "__all__"
+        extra_kwargs = {
+            "created_by": {"read_only": True}
+        }
+
+    def create(self, validated_data):
+        items = validated_data.pop("items")
+
+        request = Request.objects.create(**validated_data)
+
+        for item in items:
+            RequestItem.objects.create(
+                request=request,
+                **item
+            )
+
+        return request

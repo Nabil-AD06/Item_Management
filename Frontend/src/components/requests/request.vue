@@ -9,15 +9,20 @@
       <div class="grid">
         <div class="field">
           <label> Request ID <span class="required">*</span></label>
-          <input type="text" placeholder="REQ-001" required />
+          <input
+            v-model="request_id"
+            type="text"
+            placeholder="REQ-001"
+            required
+          />
         </div>
         <div class="field">
           <label>Date of Issue</label>
-          <input type="date" />
+          <input v-model="issue_date" type="date" />
         </div>
         <div class="field">
           <label>Return Date</label>
-          <input type="date" />
+          <input v-model="return_date" type="date" />
         </div>
       </div>
     </div>
@@ -26,19 +31,28 @@
       <div class="grid">
         <div class="field">
           <label> ID <span class="required">*</span></label>
-          <input type="text" placeholder="e.g., 01010"  required/>
+          <input
+            v-model="employee_id"
+            type="text"
+            placeholder="e.g., 01010"
+            required
+          />
         </div>
         <div class="field">
           <label>Name</label>
-          <input type="text" placeholder="full name" />
+          <input v-model="employee_name" type="text" placeholder="full name" />
         </div>
         <div class="field">
           <label>Email</label>
-          <input type="email" placeholder="example@gmail.com" />
+          <input
+            v-model="employee_email"
+            type="email"
+            placeholder="example@gmail.com"
+          />
         </div>
       </div>
     </div>
-    <div class="block-1">
+    <div class="block-1" v-for="(equipment, index) in equipement" :key="index">
       <h2>Equipment Details</h2>
       <div class="grid">
         <div class="field">
@@ -51,6 +65,7 @@
           </select>
           <input
             v-if="Dep === 'Other'"
+            v-model="otherDepartment"
             type="text"
             placeholder="Enter Departement"
             class="other-input"
@@ -59,14 +74,15 @@
         </div>
         <div class="field">
           <label>Accessory Requested <span class="required">*</span></label>
-          <select v-model="Accessory" required>
+          <select v-model="equipment.accessory_req" required>
             <option disabled value="">Select Accessory</option>
             <option v-for="i in Accessories" :key="i" :value="i">
               {{ i }}
             </option>
           </select>
           <input
-            v-if="Accessory === 'Other'"
+            v-if="equipment.accessory_req === 'Other'"
+            v-model="otherAccess"
             type="text"
             placeholder="Enter the Accessory"
             class="other-input"
@@ -75,42 +91,173 @@
         </div>
         <div class="field">
           <label>Brand/Model</label>
-          <input type="text" placeholder="e.g., Logitech G Pro X" />
+          <input
+            v-model="equipment.brand_model"
+            type="text"
+            placeholder="e.g., Logitech G Pro X"
+          />
         </div>
         <div class="field">
           <label>Serial Number</label>
-          <input type="text" placeholder="e.g., A3B-0723X-00987" />
+          <input
+            v-model="equipment.serial_Number"
+            type="text"
+            placeholder="e.g., A3B-0723X-00987"
+          />
         </div>
         <div class="field">
           <label>Quantity <span class="required">*</span></label>
-          <input v-model="Quantity" type="number" min="1"  required />
+          <input v-model="equipment.quantity" type="number" min="1" required />
         </div>
         <div class="field">
           <label>Status <span class="required">*</span></label>
-          <select v-model="Status" required>
+          <select v-model="equipment.status" required>
             <option v-for="i in Statuses" :key="i" :value="i">{{ i }}</option>
           </select>
         </div>
       </div>
     </div>
     <div class="block-1">
-        <h2>Additional Details</h2>
-        <label>Date Issued</label>
-        <input type="date" />
-        <label> Reason</label>
-        <input type="text" placeholder="Enter the reason for the request" />
-        <label>Remarks</label>
-        <input type="text" placeholder="Additional remarks" />
+      <h2>Additional Details</h2>
+      <label>Date Issued</label>
+      <input v-model="date_issued" type="date" />
+      <label> Reason</label>
+      <input
+        v-model="reason"
+        type="text"
+        placeholder="Enter the reason for the request"
+      />
+      <label>Remarks</label>
+      <input v-model="remarks" type="text" placeholder="Additional remarks" />
     </div>
-    <div>
-      <button>Create Request</button>
-      <button>Cancel</button>
+    <div class="actions">
+      <button @click="add_equipement" class="add-equip-btn">
+        Add Equipment
+      </button>
+
+      <div class="right-actions">
+        <button @click="createRequest" class="create-btn">
+          {{ props.editRequest ? "Modify Request" : "Create Request" }}
+        </button>
+        <button class="cancel-btn">Cancel</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { create_request , update_request } from "../../services/request.service";
+
+const isEditMode = ref(false);
+const editingRequestId = ref<number | null>(null);
+  
+interface RequestItem {
+  id: number;
+  status: string;
+  accessory_req: string;
+  brand_model: string;
+  serial_Number: string;
+  quantity: number;
+  request: number;
+}
+
+interface Request {
+  id: number;
+  request_id: string;
+  issue_date: string | null;
+  return_date: string | null;
+  employee_id: string;
+  employee_name: string;
+  employee_email: string;
+  department: string;
+  reason: string;
+  remarks: string;
+  date_issued: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  items: RequestItem[];
+}
+const props = defineProps<{
+  editRequest?: Request;
+}>();
+const router = useRouter();
+const emit = defineEmits(["created"]);
+
+const request_id = ref("");
+const issue_date = ref("");
+const return_date = ref("");
+const date_issued = ref("");
+const employee_id = ref("");
+const employee_name = ref("");
+const employee_email = ref("");
+const reason = ref("");
+const remarks = ref("");
+const otherDepartment = ref("");
+const otherAccess = ref("");
+
+const createRequest = async () => {
+  if (!request_id.value) {
+    alert("Request ID is required");
+    return;
+  }
+
+  if (!employee_id.value) {
+    alert("Employee ID is required");
+    return;
+  }
+
+  if (!Dep.value) {
+    alert("Department is required");
+    return;
+  }
+
+  for (const equipment of equipement.value) {
+    if (!equipment.accessory_req) {
+      alert("Accessory Requested is required");
+      return;
+    }
+
+    if (!equipment.quantity) {
+      alert("Quantity is required");
+      return;
+    }
+
+    if (!equipment.status) {
+      alert("Status is required");
+      return;
+    }
+  }
+  try {
+    const data = {
+      request_id: request_id.value,
+      issue_date: issue_date.value || null,
+      return_date: return_date.value || null,
+      date_issued: date_issued.value || null,
+      employee_id: employee_id.value,
+      employee_name: employee_name.value,
+      employee_email: employee_email.value,
+      department: Dep.value === "Other" ? otherDepartment.value : Dep.value,
+      reason: reason.value,
+      remarks: remarks.value,
+      items: equipement.value.map((equipment) => ({
+        ...equipment,
+        accessory_req:
+          equipment.accessory_req === "Other"
+            ? otherAccess.value
+            : equipment.accessory_req,
+      })),
+    };
+    await create_request(data);
+    alert("Request created successfully");
+    emit("created");
+  } catch (error: any) {
+    console.error("BACKEND ERROR:", error);
+    alert("Failed to create request.");
+  }
+};
 
 const Dep = ref("");
 const departement = [
@@ -124,7 +271,29 @@ const departement = [
   "sales",
   "Other",
 ];
-const Accessory = ref("");
+
+const equipement = ref([
+  {
+    accessory_req: "",
+    quantity: 1,
+    status: "Pending",
+    brand_model: "",
+    serial_Number: "",
+  },
+]);
+
+const add_equipement = () => {
+  equipement.value.push({
+    accessory_req: "",
+    quantity: 1,
+    status: "Pending",
+    brand_model: "",
+    serial_Number: "",
+  });
+};
+// const Accessory = ref("");
+// const Quantity = ref(1);
+// const Status = ref("Pending");
 const Accessories = [
   "Headset",
   "Mouse",
@@ -135,11 +304,36 @@ const Accessories = [
   "WebCam",
   "Other",
 ];
-
-const Quantity = ref(1);
-
-const Status = ref("Pending");
 const Statuses = ["Pending", "Issued", "Returned"];
+
+watch(
+  () => props.editRequest,
+  (request) => {
+    if (!request) return;
+
+    request_id.value = request.request_id;
+    issue_date.value = request.issue_date || "";
+    return_date.value = request.return_date || "";
+
+    employee_id.value = request.employee_id;
+    employee_name.value = request.employee_name;
+    employee_email.value = request.employee_email;
+
+    reason.value = request.reason;
+    remarks.value = request.remarks;
+
+    Dep.value = request.department;
+
+    equipement.value = request.items.map((item) => ({
+      accessory_req: item.accessory_req,
+      quantity: item.quantity,
+      status: item.status,
+      brand_model: item.brand_model,
+      serial_Number: item.serial_Number,
+    }));
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
@@ -164,10 +358,6 @@ const Statuses = ["Pending", "Issued", "Returned"];
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.request > div {
-  margin-bottom: 30px;
 }
 
 .request h1 {
@@ -247,22 +437,72 @@ const Statuses = ["Pending", "Issued", "Returned"];
   width: 250px;
   height: 60px;
 }
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
-.request button:first-child {
-  background: #d71920;
-  color: white;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border: none !important;
+  background: transparent !important;
 }
 
-.request button:first-child:hover {
-  background: #b7151b;
+.right-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0 !important;
 }
 
-.request button:last-child {
-  background: #e5e7eb;
-  color: #374151;
+/* Style général des boutons */
+.actions button {
+  width: 180px;
+  height: 50px;
+  padding: 12px 24px;
+
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: 0.2s;
 }
 
-.request button:last-child:hover {
-  background: #d1d5db;
+/* Add Equipment */
+.add-equip-btn {
+  margin-right: auto;
+  background: white !important;
+  color: #d71920 !important;
+  border: 2px solid #d71920 !important;
+}
+
+.add-equip-btn:hover {
+  background: #d71920 !important;
+  color: white !important;
+}
+
+/* Create Request */
+.create-btn {
+  background: #d71920 !important;
+  color: white !important;
+  border: 2px solid #d71920 !important;
+}
+
+.create-btn:hover {
+  background: #b7151b !important;
+}
+
+/* Cancel */
+.cancel-btn {
+  background: #e5e7eb !important;
+  color: #374151 !important;
+  border: 2px solid #e5e7eb !important;
+}
+
+.cancel-btn:hover {
+  background: #d1d5db !important;
 }
 </style>

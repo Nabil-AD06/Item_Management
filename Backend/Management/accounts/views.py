@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .serializers import LoginSerializer,ProfileUpdateSerializer,UpdatePassword , CreateNewAdmin
+from .serializers import LoginSerializer,ProfileUpdateSerializer,UpdatePassword , CreateNewAdmin , RequestSerializer
 from rest_framework import status
 from django.contrib.auth import authenticate
-from .models import Admin
+from .models import Admin , Request
 from services.keycloak_service import KeycloakService
 
 class LoginView(APIView) :
@@ -175,4 +175,27 @@ class CreateAdminView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
         
-        
+class CreateRequestView(APIView):
+    def post(self, request):
+        serializer = RequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        created_request = serializer.save(
+            created_by=request.user.username
+            )
+        return Response(
+            {
+                "message" : "Request created successfully !"
+            },
+            status=status.HTTP_201_CREATED
+            )
+        # except Exception as e:
+        #     return Response({"error": str(e)},
+        #     status=status.HTTP_400_BAD_REQUEST
+        # )
+
+class RequestListView(APIView):
+
+    def get(self, request):
+        requests = Request.objects.all()
+        serializer = RequestSerializer(requests, many=True)
+        return Response(serializer.data)
