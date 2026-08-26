@@ -58,7 +58,7 @@ class RequestSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        items = validated_data.pop("items")
+        items = validated_data.pop("requestitem_set")
 
         request = Request.objects.create(**validated_data)
 
@@ -69,3 +69,23 @@ class RequestSerializer(serializers.ModelSerializer):
             )
 
         return request
+    def update(self, instance, validated_data):
+        items = validated_data.pop("requestitem_set", None)
+    
+        # Modifier les champs de la Request
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+    
+        instance.save()
+    
+        # Modifier les équipements
+        if items is not None:
+            instance.requestitem_set.all().delete()
+    
+            for item in items:
+                RequestItem.objects.create(
+                    request=instance,
+                    **item
+                )
+    
+        return instance

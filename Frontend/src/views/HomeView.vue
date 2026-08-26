@@ -3,9 +3,11 @@ import Sidebar from "../components/layout/Sidebar.vue";
 import Header from "@/components/layout/Header.vue";
 import request from "@/components/requests/request.vue";
 import { get_requests } from "../services/request.service";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
+import { useRouter } from "vue-router";
 
 const activeTab = ref("");
+const selectedRequest = ref<Request | null>(null);
 
 const editingRequest = ref<Request | null>(null);
 
@@ -38,7 +40,6 @@ interface Request {
 }
 
 const requests = ref<Request[]>([]);
-const selectedRequest = ref<Request | null>(null);
 
 const editRequest = (request: Request) => {
   editingRequest.value = request;
@@ -53,6 +54,51 @@ const loadRequests = async () => {
 onMounted(() => {
   loadRequests();
 });
+
+const router = useRouter();
+const goToHistory = () => {
+  router.push("/History");
+};
+
+const recentRequests = computed(() => {
+  return requests.value.slice(0, 5);
+});
+
+const overdueRequests = computed(() => {
+  const today = new Date();
+
+  return requests.value.filter((request) => {
+    if (!request.return_date) {
+      return false;
+    }
+
+    const returnDate = new Date(request.return_date);
+
+    const isOverdue = returnDate < today;
+
+    const isReturned = request.items.every(
+      (item) => item.status === "Returned",
+    );
+
+    return isOverdue && !isReturned;
+  });
+});
+
+const getDaysLate = (returnDate: string | null) => {
+  if (!returnDate) {
+    return 0;
+  }
+
+  const today = new Date();
+  const deadline = new Date(returnDate);
+
+  const difference = today.getTime() - deadline.getTime();
+
+  return Math.max(
+    0,
+    Math.floor(difference / (1000 * 60 * 60 * 24))
+  );
+};
 </script>
 
 <template>
@@ -81,12 +127,14 @@ onMounted(() => {
         </div>
 
         <div class="requests-container">
-          <div class="table-toolbar">
-            <input type="text" placeholder="Search request..." />
+          <div class="table-header">
+            <div>
+              <h2>Recent Requests</h2>
+              <p>Latest equipment requests</p>
+            </div>
 
-            <button class="filter-btn">Filter</button>
+            <button class="view-all-btn" @click="goToHistory">View All</button>
           </div>
-
           <div class="table-wrapper">
             <table>
               <thead>
@@ -103,7 +151,7 @@ onMounted(() => {
               </thead>
 
               <tbody>
-                <template v-for="request in requests" :key="request.id">
+                <template v-for="request in recentRequests" :key="request.id">
                   <tr v-for="item in request.items" :key="item.id">
                     <td>
                       <strong>{{ request.request_id }}</strong>
@@ -154,7 +202,81 @@ onMounted(() => {
             </table>
           </div>
         </div>
+        <div class="overdue-container">
+          <div class="table-header">
+            <div>
+              <h2>Overdue Returns</h2>
+              <p>Employees who have not returned their equipment on time</p>
+            </div>
 
+            <span class="overdue-count">
+              {{ overdueRequests.length }} overdue
+            </span>
+          </div>
+
+          <div v-if="overdueRequests.length > 0" class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>REQ ID</th>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Department</th>
+                  <th>Return Date</th>
+                  <th>Days Late</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr v-for="request in overdueRequests" :key="request.id">
+                  <td>
+                    <strong>{{ request.request_id }}</strong>
+                  </td>
+
+                  <td>
+                    {{ request.employee_id }}
+                  </td>
+
+                  <td>
+                    {{ request.employee_name || "—" }}
+                  </td>
+
+                  <td>
+                    {{ request.department }}
+                  </td>
+
+                  <td>
+                    {{ request.return_date }}
+                  </td>
+
+                  <td>{{ getDaysLate(request.return_date) }} days</td>
+
+                  <td>
+                    <span class="status overdue"> Overdue </span>
+                  </td>
+
+                  <td>
+                    <button
+                      class="details-btn"
+                      @click="selectedRequest = request"
+                    >
+                      Details
+                    </button>
+                    <button class="edit-btn" @click="editRequest(request)">
+                          Edit
+                        </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-else class="no-overdue">
+            <p>✓ No overdue equipment returns</p>
+          </div>
+        </div>
         <RouterView />
       </main>
     </div>
@@ -164,11 +286,11 @@ onMounted(() => {
       @click.self="activeTab = ''"
     >
       <div class="modal">
-        <request
-          :edit-request="editingRequest"
+        <<request
+          :editRequest="editingRequest"
           @created="
             activeTab = '';
-            editingRequest = null;
+            selectedRequest = null;
             loadRequests();
           "
         />
@@ -615,16 +737,73 @@ tbody tr:hover {
 
 .actions {
   display: flex;
-  gap: 7px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 15px;
+  width: 100%;
+  padding-right: 110px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.details-btn,
-.edit-btn {
+th:nth-child(1),
+td:nth-child(1) {
+  width: 11%;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 10%;
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+  width: 12%;
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+  width: 14%;
+}
+
+th:nth-child(5),
+td:nth-child(5) {
+  width: 16%;
+}
+
+th:nth-child(6),
+td:nth-child(6) {
+  width: 10%;
+}
+
+th:nth-child(7),
+td:nth-child(7) {
+  width: 12%;
+}
+
+th:nth-child(8),
+td:nth-child(8) {
+  width: 15%;
+}
+
+.edit-btn{
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
   font-weight: 600;
+  font-size: 100%;
+}
+
+.details-btn {
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 100%;
+  font-weight: 600;
+  margin-right: 15px;
 }
 
 .details-btn {
@@ -721,5 +900,85 @@ tbody tr:hover {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 10px;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.table-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.table-header p {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.view-all-btn {
+  padding: 10px 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-all-btn:hover {
+  background: #d71920;
+  border-color: #d71920;
+  color: white;
+}
+
+.overdue-container {
+  margin-top: 25px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.overdue-container table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.overdue-container .actions {
+  justify-content: flex-end;
+  padding-right: 110px;
+}
+
+.overdue-count {
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.no-overdue {
+  padding: 30px;
+  text-align: center;
+  color: #15803d;
+  background: #f0fdf4;
+  border-radius: 10px;
+  font-weight: 600;
 }
 </style>

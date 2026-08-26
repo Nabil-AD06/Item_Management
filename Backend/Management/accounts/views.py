@@ -196,6 +196,31 @@ class CreateRequestView(APIView):
 class RequestListView(APIView):
 
     def get(self, request):
-        requests = Request.objects.all()
+        requests = Request.objects.all().order_by("-created_at")
         serializer = RequestSerializer(requests, many=True)
         return Response(serializer.data)
+
+class RequestUpdateView(APIView):
+
+    def put(self, request, pk):
+        try:
+            request_obj = Request.objects.get(pk=pk)
+        except Request.DoesNotExist:
+            return Response(
+                {"error": "Request not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = RequestSerializer(
+            request_obj,
+            data=request.data
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )

@@ -148,11 +148,8 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { create_request , update_request } from "../../services/request.service";
+import { create_request, update_request } from "../../services/request.service";
 
-const isEditMode = ref(false);
-const editingRequestId = ref<number | null>(null);
-  
 interface RequestItem {
   id: number;
   status: string;
@@ -250,12 +247,24 @@ const createRequest = async () => {
             : equipment.accessory_req,
       })),
     };
-    await create_request(data);
-    alert("Request created successfully");
+    if (props.editRequest) {
+      await update_request(props.editRequest.id, data);
+
+      alert("Request modified successfully");
+    } else {
+      await create_request(data);
+
+      alert("Request created successfully");
+    }
+
     emit("created");
   } catch (error: any) {
     console.error("BACKEND ERROR:", error);
-    alert("Failed to create request.");
+    alert(
+      props.editRequest
+        ? "Failed to modify request."
+        : "Failed to create request.",
+    );
   }
 };
 
@@ -314,7 +323,7 @@ watch(
     request_id.value = request.request_id;
     issue_date.value = request.issue_date || "";
     return_date.value = request.return_date || "";
-
+    date_issued.value = request.date_issued || "";
     employee_id.value = request.employee_id;
     employee_name.value = request.employee_name;
     employee_email.value = request.employee_email;

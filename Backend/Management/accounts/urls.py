@@ -1,5 +1,5 @@
 from django.urls import path , include
-from .views import LoginView,ProfileUpdateView,ChangePasswordView,CreateAdminView,CreateRequestView,RequestListView
+from .views import LoginView,ProfileUpdateView,ChangePasswordView,CreateAdminView,CreateRequestView,RequestListView,RequestUpdateView
 
 urlpatterns = [
     path("login/" , LoginView.as_view() , name="login"),
@@ -9,4 +9,5 @@ urlpatterns = [
     path("create-admin/",CreateAdminView.as_view(),name="create-admin"),
     path("create-request/",CreateRequestView.as_view(),name="create-request"),
     path("requests/",RequestListView.as_view(),name="requests"),
+    path("requests/<int:pk>/", RequestUpdateView.as_view()),
 ]
