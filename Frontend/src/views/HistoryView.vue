@@ -2,7 +2,7 @@
 import Sidebar from "../components/layout/Sidebar.vue";
 import Header from "@/components/layout/Header.vue";
 import request from "@/components/requests/request.vue";
-import { get_requests } from "../services/request.service";
+import { get_requests,delete_request_item  } from "../services/request.service";
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 
@@ -56,6 +56,24 @@ onMounted(() => {
   loadRequests();
 });
 
+const deleteItem = async (item: RequestItem) => {
+  const confirmed = confirm(`Voulez-vous vraiment supprimer cet item ?`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await delete_request_item(item.id);
+
+    await loadRequests();
+
+    alert("Item deleted successfully.");
+  } catch (error) {
+    console.error("Error deleting item:", error);
+    alert("Failed to delete item.");
+  }
+};
 
 </script>
 
@@ -129,6 +147,7 @@ onMounted(() => {
 
                     <td>
                       <div class="actions">
+                        <div class="left-actions">
                         <button
                           class="details-btn"
                           @click="selectedRequest = request"
@@ -139,6 +158,11 @@ onMounted(() => {
                         <button class="edit-btn" @click="editRequest(request)">
                           Edit
                         </button>
+                        </div>
+                        <button
+                        @click="deleteItem(item)"
+                        class="delete-btn"
+                      >Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -612,7 +636,7 @@ tbody tr:hover {
   justify-content: flex-end;
   gap: 10px;
   width: 100%;
-  padding-right: 80px;
+  padding-right: 50px;
 }
 
 table {
@@ -633,12 +657,22 @@ table {
 }
 
 .details-btn {
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 100%;
+  font-weight: 600;
   background: white;
   border: 1px solid #d1d5db;
   color: #374151;
 }
 
 .edit-btn {
+  padding: 7px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
   background: #d71920;
   border: 1px solid #d71920;
   color: white;
@@ -726,5 +760,37 @@ table {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 10px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.left-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-25px);
+}
+
+.delete-btn {
+  margin-left: auto;
+  margin-right: -40px;
+  padding: 7px 11px;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
 }
 </style>

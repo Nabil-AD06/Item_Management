@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from .serializers import LoginSerializer,ProfileUpdateSerializer,UpdatePassword , CreateNewAdmin , RequestSerializer
 from rest_framework import status
 from django.contrib.auth import authenticate
-from .models import Admin , Request
+from .models import Admin , Request , RequestItem
 from services.keycloak_service import KeycloakService
 
 class LoginView(APIView) :
@@ -200,7 +200,7 @@ class RequestListView(APIView):
         serializer = RequestSerializer(requests, many=True)
         return Response(serializer.data)
 
-class RequestUpdateView(APIView):
+class RequestDetailView(APIView):
 
     def put(self, request, pk):
         try:
@@ -223,4 +223,38 @@ class RequestUpdateView(APIView):
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def delete(self, request, pk):
+        try:
+            request_obj = Request.objects.get(pk=pk)
+        except Request.DoesNotExist:
+            return Response(
+                {"detail": "Request not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        request_obj.delete()
+
+        return Response(
+            {"detail": "Request deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+class RequestItemDeleteView(APIView):
+
+    def delete(self, request, pk):
+        try:
+            item = RequestItem.objects.get(pk=pk)
+        except RequestItem.DoesNotExist:
+            return Response(
+                {"detail": "Item not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        item.delete()
+
+        return Response(
+            {"detail": "Item deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
         )

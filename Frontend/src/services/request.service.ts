@@ -50,3 +50,11 @@ export const update_request = (
 export const get_requests = () => {
   return api.get("/requests/");
 };
+
+export const delete_request = (id: number) => {
+  return api.delete(`/requests/${id}/`);
+};
+
+export const delete_request_item = (id: number) => {
+    return api.delete(`/request-items/${id}/`);
+};
