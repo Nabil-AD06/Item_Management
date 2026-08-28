@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Request , RequestItem
+from .models import Request , RequestItem , Equipment
 
 class LoginSerializer(serializers.Serializer):
     email_or_username = serializers.CharField()
@@ -89,3 +89,20 @@ class RequestSerializer(serializers.ModelSerializer):
                 )
     
         return instance
+
+
+
+class EquipmentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Equipment
+        fields = "__all__"
+
+from rest_framework import serializers
+from .models import Category
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ["id", "name", "created_at"]

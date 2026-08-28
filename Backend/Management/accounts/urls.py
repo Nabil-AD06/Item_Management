@@ -1,5 +1,23 @@
 from django.urls import path , include
-from .views import LoginView,ProfileUpdateView,ChangePasswordView,CreateAdminView,CreateRequestView,RequestListView,RequestDetailView,RequestItemDeleteView
+from rest_framework.routers import DefaultRouter
+
+from .views import (
+    LoginView,
+    ProfileUpdateView,
+    ChangePasswordView,
+    CreateAdminView,
+    CreateRequestView,
+    RequestListView,
+    RequestDetailView,
+    RequestItemDeleteView,
+    EquipmentListCreateView,
+    EquipmentDetailView,
+    CategoryViewSet,
+)
+
+router = DefaultRouter()
+
+router.register(r"categories", CategoryViewSet, basename="category")
 
 urlpatterns = [
     path("login/" , LoginView.as_view() , name="login"),
@@ -11,4 +29,7 @@ urlpatterns = [
     path("requests/",RequestListView.as_view(),name="requests"),
     path("requests/<int:pk>/",RequestDetailView.as_view(),name="request-detail"),
     path("request-items/<int:pk>/",RequestItemDeleteView.as_view(),name="request-item-delete"),
+    path("equipment/",EquipmentListCreateView.as_view(),name="equipment-list-create"),
+    path("", include(router.urls)),
+    path("equipment/<int:pk>/", EquipmentDetailView.as_view(), name="equipment-detail"),
 ]

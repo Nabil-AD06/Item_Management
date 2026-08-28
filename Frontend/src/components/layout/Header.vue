@@ -2,13 +2,13 @@
   <header class="header">
 
     <div class="welcome">
-      <h1>Welcome back, {{first_name}} 👋</h1>
+      <h1>Welcome back, {{first_name}}</h1>
       <p>Here's what's happening with your workspace.</p>
     </div>
 
     <div class="actions">
       <div class="profile">
-        AU
+        UI
       </div>
     </div>
   </header>

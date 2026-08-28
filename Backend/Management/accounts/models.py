@@ -45,3 +45,79 @@ class RequestItem(models.Model) :
     brand_model = models.CharField(max_length=150 , blank=True)
     serial_Number = models.CharField(max_length=150 , blank=True)
     quantity = models.PositiveIntegerField()
+
+
+class Equipment(models.Model):
+
+    CATEGORY_CHOICES = [
+        ("Laptop", "Laptop"),
+        ("Desktop", "Desktop"),
+        ("Monitor", "Monitor"),
+        ("Keyboard", "Keyboard"),
+        ("Mouse", "Mouse"),
+        ("Headset", "Headset"),
+        ("WebCam", "WebCam"),
+        ("Other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("Available", "Available"),
+        ("Issued", "Issued"),
+        ("Maintenance", "Maintenance"),
+        ("Lost", "Lost"),
+    ]
+
+    category = models.CharField(
+        max_length=100,
+        choices=CATEGORY_CHOICES
+    )
+
+    brand_model = models.CharField(
+        max_length=150,
+        blank=True
+    )
+
+    serial_number = models.CharField(
+        max_length=150,
+        blank=True
+    )
+
+    quantity = models.PositiveIntegerField(
+        default=1
+    )
+
+    status = models.CharField(
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default="Available"
+    )
+
+    location = models.CharField(
+        max_length=150,
+        blank=True
+    )
+
+    notes = models.TextField(
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+        return f"{self.category} - {self.brand_model}"
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+

@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .serializers import LoginSerializer,ProfileUpdateSerializer,UpdatePassword , CreateNewAdmin , RequestSerializer
-from rest_framework import status
+from .serializers import LoginSerializer,ProfileUpdateSerializer,UpdatePassword,CreateNewAdmin,RequestSerializer,EquipmentSerializer,CategorySerializer
+from rest_framework import status , viewsets
 from django.contrib.auth import authenticate
-from .models import Admin , Request , RequestItem
+from .models import Admin , Request , RequestItem ,Equipment,Category
 from services.keycloak_service import KeycloakService
 
 class LoginView(APIView) :
@@ -256,5 +256,87 @@ class RequestItemDeleteView(APIView):
 
         return Response(
             {"detail": "Item deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class EquipmentListCreateView(APIView):
+
+    def get(self, request):
+        equipments = Equipment.objects.all()
+        serializer = EquipmentSerializer(equipments, many=True)
+
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = EquipmentSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all().order_by("name")
+    serializer_class = CategorySerializer
+
+class EquipmentDetailView(APIView):
+
+    def get(self, request, pk):
+        try:
+            equipment = Equipment.objects.get(pk=pk)
+        except Equipment.DoesNotExist:
+            return Response(
+                {"detail": "Equipment not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = EquipmentSerializer(equipment)
+
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        try:
+            equipment = Equipment.objects.get(pk=pk)
+        except Equipment.DoesNotExist:
+            return Response(
+                {"detail": "Equipment not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = EquipmentSerializer(
+            equipment,
+            data=request.data
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def delete(self, request, pk):
+        try:
+            equipment = Equipment.objects.get(pk=pk)
+        except Equipment.DoesNotExist:
+            return Response(
+                {"detail": "Equipment not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        equipment.delete()
+
+        return Response(
+            {"detail": "Equipment deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )

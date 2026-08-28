@@ -2,13 +2,39 @@
 import Sidebar from "../components/layout/Sidebar.vue";
 import Header from "@/components/layout/Header.vue";
 import request from "@/components/requests/request.vue";
-import { get_requests,delete_request_item  } from "../services/request.service";
-import { ref, onMounted } from "vue";
+import { get_requests, delete_request_item } from "../services/request.service";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 
-
 const activeTab = ref("");
+const searchText = ref("");
+const filterType = ref("request");
 const selectedRequest = ref<Request | null>(null);
+
+const currentPage = ref(1);
+const itemsPerPage = 10;
+const totalPages = computed(() =>
+  Math.ceil(filteredRequests.value.length / itemsPerPage),
+);
+
+const paginatedRequests = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+
+  return filteredRequests.value.slice(start, start + itemsPerPage);
+});
+
+const accessoryOptions = [
+  "Headset",
+  "Mouse",
+  "Keyboard",
+  "Laptop",
+  "Desktop",
+  "Monitor",
+  "WebCam",
+  "Other",
+];
+
+const statusOptions = ["Pending", "Issued", "Returned"];
 
 const editingRequest = ref<Request | null>(null);
 
@@ -40,7 +66,51 @@ interface Request {
   items: RequestItem[];
 }
 
+const filteredRequests = computed(() => {
+  if (!searchValue.value) {
+    return requests.value;
+  }
+
+  const value = searchValue.value.toLowerCase();
+
+  return requests.value.filter((request) => {
+    if (searchType.value === "request") {
+      return request.request_id.toLowerCase().includes(value);
+    }
+
+    if (searchType.value === "id") {
+      return request.employee_id.toLowerCase().includes(value);
+    }
+
+    if (searchType.value === "accessory") {
+      const accessorySearch =
+        searchValue.value === "Other"
+          ? customAccessory.value
+          : searchValue.value;
+
+      if (!accessorySearch) {
+        return true;
+      }
+
+      return request.items.some((item) =>
+        item.accessory_req
+          .toLowerCase()
+          .includes(accessorySearch.toLowerCase()),
+      );
+    }
+
+    if (searchType.value === "status") {
+      return request.items.some((item) => item.status.toLowerCase() === value);
+    }
+
+    return true;
+  });
+});
+
 const requests = ref<Request[]>([]);
+const searchType = ref("request");
+const searchValue = ref("");
+const customAccessory = ref("");
 
 const editRequest = (request: Request) => {
   editingRequest.value = request;
@@ -74,7 +144,6 @@ const deleteItem = async (item: RequestItem) => {
     alert("Failed to delete item.");
   }
 };
-
 </script>
 
 <template>
@@ -93,11 +162,70 @@ const deleteItem = async (item: RequestItem) => {
 
         <div class="requests-container">
           <div class="table-toolbar">
-            <input type="text" placeholder="Search request..." />
+            <!-- Type de recherche -->
+            <select v-model="searchType" class="filter-select">
+              <option value="request">Request</option>
+              <option value="id">ID</option>
+              <option value="accessory">Accessory</option>
+              <option value="status">Status</option>
+            </select>
 
-            <button class="filter-btn">Filter</button>
+            <!-- Recherche Request -->
+            <input
+              v-if="searchType === 'request'"
+              v-model="searchValue"
+              type="text"
+              placeholder="Search request..."
+              class="search-input"
+            />
+
+            <!-- Recherche ID -->
+            <input
+              v-if="searchType === 'id'"
+              v-model="searchValue"
+              type="text"
+              placeholder="Search employee ID..."
+              class="search-input"
+            />
+
+            <!-- Recherche Accessory -->
+            <template v-if="searchType === 'accessory'">
+              <select v-model="searchValue" class="filter-select">
+                <option value="">All Accessories</option>
+
+                <option
+                  v-for="accessory in accessoryOptions"
+                  :key="accessory"
+                  :value="accessory"
+                >
+                  {{ accessory }}
+                </option>
+              </select>
+
+              <input
+                v-if="searchValue === 'Other'"
+                v-model="customAccessory"
+                type="text"
+                placeholder="Enter accessory..."
+                class="search-input"
+              />
+            </template>
+
+            <!-- Recherche Status -->
+            <template v-if="searchType === 'status'">
+              <select v-model="searchValue" class="filter-select">
+                <option value="">All Statuses</option>
+
+                <option
+                  v-for="status in statusOptions"
+                  :key="status"
+                  :value="status"
+                >
+                  {{ status }}
+                </option>
+              </select>
+            </template>
           </div>
-
           <div class="table-wrapper">
             <table>
               <thead>
@@ -114,7 +242,10 @@ const deleteItem = async (item: RequestItem) => {
               </thead>
 
               <tbody>
-                <template v-for="request in requests" :key="request.id">
+                <template
+                  v-for="request in paginatedRequests"
+                  :key="request.id"
+                >
                   <tr v-for="item in request.items" :key="item.id">
                     <td>
                       <strong>{{ request.request_id }}</strong>
@@ -148,27 +279,43 @@ const deleteItem = async (item: RequestItem) => {
                     <td>
                       <div class="actions">
                         <div class="left-actions">
-                        <button
-                          class="details-btn"
-                          @click="selectedRequest = request"
-                        >
-                          Details
-                        </button>
+                          <button
+                            class="details-btn"
+                            @click="selectedRequest = request"
+                          >
+                            Details
+                          </button>
 
-                        <button class="edit-btn" @click="editRequest(request)">
-                          Edit
-                        </button>
+                          <button
+                            class="edit-btn"
+                            @click="editRequest(request)"
+                          >
+                            Edit
+                          </button>
                         </div>
-                        <button
-                        @click="deleteItem(item)"
-                        class="delete-btn"
-                      >Delete</button>
+                        <button @click="deleteItem(item)" class="delete-btn">
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
                 </template>
               </tbody>
             </table>
+            <div class="pagination">
+              <button @click="currentPage--" :disabled="currentPage === 1">
+                Previous
+              </button>
+
+              <span> Page {{ currentPage }} / {{ totalPages }} </span>
+
+              <button
+                @click="currentPage++"
+                :disabled="currentPage === totalPages"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
@@ -387,6 +534,11 @@ const deleteItem = async (item: RequestItem) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .toolbar {
@@ -431,14 +583,6 @@ main {
   margin-top: 30px;
 }
 
-.request-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
 .request-header {
   display: flex;
   justify-content: space-between;
@@ -454,15 +598,6 @@ main {
 .request-header p {
   margin-top: 5px;
   color: #6b7280;
-}
-
-.status {
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: #fff7ed;
-  color: #c2410c;
-  font-weight: 600;
-  font-size: 13px;
 }
 
 .request-info {
@@ -511,6 +646,7 @@ main {
   color: #6b7280;
   font-size: 13px;
 }
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -552,10 +688,19 @@ main {
   padding: 20px;
 }
 
+/* =========================
+   TABLE TOOLBAR / SEARCH & FILTERS
+   ========================= */
+
 .table-toolbar {
   display: flex;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  padding: 15px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
 }
 
 .table-toolbar input {
@@ -574,13 +719,178 @@ main {
   cursor: pointer;
 }
 
+/* Input principal de recherche */
+.search-input {
+  flex: 1;
+  min-width: 250px;
+  height: 48px;
+  width: 300px;
+  padding: 0 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-input:hover {
+  border-color: #9ca3af;
+}
+
+.search-input:focus {
+  border-color: #d71920;
+  box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.1);
+}
+
+/* Select "Filter by" */
+.filter-select {
+  height: 48px;
+  min-width: 170px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+  transition: all 0.2s ease;
+}
+
+.filter-select:hover {
+  border-color: #9ca3af;
+}
+
+.filter-select:focus {
+  border-color: #d71920;
+  box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.1);
+}
+
+/* Select Accessory */
+.accessory-select {
+  height: 48px;
+  min-width: 180px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  font-size: 15px;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+}
+
+.accessory-select:focus {
+  border-color: #d71920;
+}
+
+/* Select Status */
+.status-select {
+  height: 48px;
+  min-width: 160px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  font-size: 15px;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+}
+
+.status-select:focus {
+  border-color: #d71920;
+}
+
+/* Input affiché lorsque Accessory = Other */
+.other-accessory-input {
+  height: 48px;
+  min-width: 180px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+}
+
+.other-accessory-input:focus {
+  border-color: #d71920;
+  box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.1);
+}
+
+/* Bouton reset */
+.reset-filter-btn {
+  height: 48px;
+  padding: 0 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.reset-filter-btn:hover {
+  background: #f3f4f6;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }
 
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 900px) {
+  .table-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .filter-select,
+  .accessory-select,
+  .status-select,
+  .other-accessory-input {
+    flex: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select,
+  .search-input {
+    width: 100%;
+  }
+}
+
+/* =========================
+   TABLE
+   ========================= */
+
 table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 thead {
@@ -611,8 +921,10 @@ tbody tr:hover {
   display: inline-block;
   padding: 5px 10px;
   border-radius: 6px;
-  font-size: 12px;
+  background: #fff7ed;
+  color: #c2410c;
   font-weight: 600;
+  font-size: 12px;
 }
 
 .status.issued {
@@ -630,6 +942,10 @@ tbody tr:hover {
   color: #15803d;
 }
 
+/* =========================
+   ACTIONS (table rows / modal)
+   ========================= */
+
 .actions {
   display: flex;
   align-items: center;
@@ -637,23 +953,6 @@ tbody tr:hover {
   gap: 10px;
   width: 100%;
   padding-right: 50px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-
-
-.details-btn,
-.edit-btn {
-  padding: 7px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .details-btn {
@@ -677,6 +976,38 @@ table {
   border: 1px solid #d71920;
   color: white;
 }
+
+.left-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-25px);
+}
+
+.delete-btn {
+  margin-left: auto;
+  margin-right: -40px;
+  padding: 7px 11px;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+/* =========================
+   DETAILS MODAL
+   ========================= */
+
 .details-modal {
   width: 90%;
   max-width: 900px;
@@ -761,36 +1092,35 @@ table {
   border-radius: 8px;
   margin-bottom: 10px;
 }
-.actions {
+
+.pagination {
   display: flex;
+  justify-content: center;
   align-items: center;
-  width: 100%;
+  gap: 20px;
+  padding: 20px;
 }
 
-.left-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transform: translateX(-25px);
-}
-
-.delete-btn {
-  margin-left: auto;
-  margin-right: -40px;
-  padding: 7px 11px;
-  border-radius: 6px;
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-  font-size: 14px;
-  font-weight: 600;
+.pagination button {
+  padding: 10px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
   cursor: pointer;
-  transition: 0.2s;
 }
 
-.delete-btn:hover {
-  background: #dc2626;
+.pagination button:hover:not(:disabled) {
+  background: #d71920;
   color: white;
-  border-color: #dc2626;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-weight: 600;
+  color: rgb(107, 107, 107);
 }
 </style>
