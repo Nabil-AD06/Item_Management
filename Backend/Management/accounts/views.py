@@ -264,23 +264,51 @@ class EquipmentListCreateView(APIView):
 
     def get(self, request):
         equipments = Equipment.objects.all()
-        serializer = EquipmentSerializer(equipments, many=True)
+        serializer = EquipmentSerializer(
+            equipments,
+            many=True
+        )
 
         return Response(serializer.data)
 
     def post(self, request):
         serializer = EquipmentSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
+    
+        if not serializer.is_valid():
             return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
             )
-
+    
+        category = serializer.validated_data["category"]
+        brand_model = serializer.validated_data["brand_model"]
+        quantity = serializer.validated_data["quantity"]
+    
+        equipment = Equipment.objects.filter(
+            category=category,
+            brand_model=brand_model
+        ).first()
+    
+        if equipment:
+            equipment.quantity += quantity
+    
+            # Si un nouveau serial est fourni, on peut le mettre à jour
+            serial_number = serializer.validated_data.get("serial_number", "")
+            if serial_number:
+                equipment.serial_number = serial_number
+    
+            equipment.save()
+    
+            return Response(
+                EquipmentSerializer(equipment).data,
+                status=status.HTTP_200_OK
+            )
+    
+        equipment = serializer.save()
+    
         return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+            EquipmentSerializer(equipment).data,
+            status=status.HTTP_201_CREATED
         )
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -289,46 +317,71 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 class EquipmentDetailView(APIView):
 
-    def get(self, request, pk):
+    def get_object(self, pk):
         try:
-            equipment = Equipment.objects.get(pk=pk)
+            return Equipment.objects.get(pk=pk)
         except Equipment.DoesNotExist:
-            return Response(
-                {"detail": "Equipment not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        serializer = EquipmentSerializer(equipment)
-
-        return Response(serializer.data)
+            return None
 
     def put(self, request, pk):
-        try:
-            equipment = Equipment.objects.get(pk=pk)
-        except Equipment.DoesNotExist:
+        equipment = self.get_object(pk)
+    
+        if equipment is None:
             return Response(
                 {"detail": "Equipment not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
-
+    
         serializer = EquipmentSerializer(
             equipment,
             data=request.data
         )
+    
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+        category = serializer.validated_data["category"]
+        brand_model = serializer.validated_data["brand_model"]
+        serial_number = serializer.validated_data.get("serial_number", "")
+        new_quantity = serializer.validated_data["quantity"]
+    
+        # Chercher un autre équipement identique
+        existing_equipment = Equipment.objects.filter(
+            category=category,
+            brand_model=brand_model,
+            serial_number=serial_number
+        ).exclude(
+            id=equipment.id
+        ).first()
+    
+        if existing_equipment:
+            # Fusionner les quantités
+            existing_equipment.quantity += new_quantity
+            existing_equipment.save()
+    
+            # Supprimer l'ancien équipement
+            equipment.delete()
+    
+            return Response(
+                EquipmentSerializer(existing_equipment).data,
+                status=status.HTTP_200_OK
+            )
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-
+            # Aucun doublon → modification normale
+        serializer.save()
+    
         return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+            serializer.data,
+            status=status.HTTP_200_OK
         )
 
     def delete(self, request, pk):
-        try:
-            equipment = Equipment.objects.get(pk=pk)
-        except Equipment.DoesNotExist:
+        equipment = self.get_object(pk)
+
+        if equipment is None:
             return Response(
                 {"detail": "Equipment not found."},
                 status=status.HTTP_404_NOT_FOUND

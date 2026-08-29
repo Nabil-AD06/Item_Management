@@ -13,30 +13,25 @@ export interface Equipment {
   updated_at: string;
 }
 
-export const get_equipments = () => {
-  return api.get<Equipment[]>("/equipment/");
-};
-
-export const create_equipment = (data: {
+export interface EquipmentData {
   category: string;
   brand_model: string;
   serial_number: string;
   quantity: number;
   notes: string;
-}) => {
+}
+
+export const get_equipments = () => {
+  return api.get<Equipment[]>("/equipment/");
+};
+
+export const create_equipment = (data: EquipmentData) => {
   return api.post<Equipment>("/equipment/", data);
 };
 
 export const update_equipment = (
   id: number,
-  data: {
-    category: string;
-    brand_model: string;
-    serial_number: string;
-    quantity: number;
-    status: string;
-    notes: string;
-  }
+  data: EquipmentData
 ) => {
   return api.put<Equipment>(`/equipment/${id}/`, data);
 };

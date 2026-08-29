@@ -2,8 +2,18 @@
 import { ref, onMounted } from "vue";
 import Sidebar from "@/components/layout/Sidebar.vue";
 import Header from "@/components/layout/Header.vue";
-import {get_categories,create_category,type Category} from "@/services/category.service";
-import { get_equipments ,create_equipment,update_equipment,delete_equipment, type Equipment } from "@/services/equipment.service";
+import {
+  get_categories,
+  create_category,
+  type Category,
+} from "@/services/category.service";
+import {
+  get_equipments,
+  create_equipment,
+  update_equipment,
+  delete_equipment,
+  type Equipment,
+} from "@/services/equipment.service";
 
 const equipments = ref<Equipment[]>([]);
 const showAddModal = ref(false);
@@ -11,11 +21,13 @@ const newCategory = ref("");
 const selectedCategory = ref<Category | null>(null);
 const showItemsModal = ref(false);
 const showEquipmentModal = ref(false);
+const selectedEquipment = ref<Equipment | null>(null);
+const showEditEquipmentModal = ref(false);
+
 const equipmentForm = ref({
   brand_model: "",
-  serial_Number: "",
+  serial_number: "",
   quantity: 1,
-  status: "Available",
   notes: "",
 });
 
@@ -72,6 +84,15 @@ const viewItems = (category: Category) => {
 };
 
 const openAddEquipment = () => {
+  editingEquipment.value = null;
+
+  equipmentForm.value = {
+    brand_model: "",
+    serial_number: "",
+    quantity: 1,
+    notes: "",
+  };
+
   showEquipmentModal.value = true;
 };
 
@@ -81,13 +102,21 @@ const addEquipment = async () => {
   }
 
   try {
-    await create_equipment({
+    const data = {
       category: selectedCategory.value.name,
       brand_model: equipmentForm.value.brand_model,
       serial_number: equipmentForm.value.serial_number,
       quantity: equipmentForm.value.quantity,
       notes: equipmentForm.value.notes,
-    });
+    };
+
+    if (editingEquipment.value) {
+      // EDIT
+      await update_equipment(editingEquipment.value.id, data);
+    } else {
+      // CREATE
+      await create_equipment(data);
+    }
 
     await loadEquipments();
 
@@ -95,14 +124,13 @@ const addEquipment = async () => {
       brand_model: "",
       serial_number: "",
       quantity: 1,
-      status: "Available",
       notes: "",
     };
 
+    editingEquipment.value = null;
     showEquipmentModal.value = false;
-
   } catch (error) {
-    console.error("Error creating equipment:", error);
+    console.error("Error saving equipment:", error);
   }
 };
 
@@ -115,12 +143,47 @@ const openEditEquipment = (equipment: Equipment) => {
     brand_model: equipment.brand_model,
     serial_number: equipment.serial_number,
     quantity: equipment.quantity,
-    status: equipment.status,
     notes: equipment.notes,
   };
 
   showEquipmentModal.value = true;
 };
+
+const updateEquipment = async () => {
+  if (!selectedEquipment.value) {
+    return;
+  }
+
+  try {
+    await update_equipment(selectedEquipment.value.id, {
+      category: selectedEquipment.value.category,
+
+      brand_model: equipmentForm.value.brand_model,
+
+      serial_number: equipmentForm.value.serial_number,
+
+      quantity: equipmentForm.value.quantity,
+
+      notes: equipmentForm.value.notes,
+    });
+
+    await loadEquipments();
+
+    selectedEquipment.value = null;
+
+    equipmentForm.value = {
+      brand_model: "",
+      serial_number: "",
+      quantity: 1,
+      notes: "",
+    };
+
+    showEditEquipmentModal.value = false;
+  } catch (error) {
+    console.error("Error updating equipment:", error);
+  }
+};
+
 const saveEquipment = async () => {
   if (!selectedCategory.value) {
     return;
@@ -132,34 +195,28 @@ const saveEquipment = async () => {
       brand_model: equipmentForm.value.brand_model,
       serial_number: equipmentForm.value.serial_number,
       quantity: equipmentForm.value.quantity,
-      status: equipmentForm.value.status,
       notes: equipmentForm.value.notes,
     };
 
     if (editingEquipment.value) {
-
-      // Modification
-      await update_equipment(
-        editingEquipment.value.id,
-        data
-      );
-
+      // EDIT
+      await update_equipment(editingEquipment.value.id, data);
     } else {
-
-      // Création
-      await create_equipment({
-        category: data.category,
-        brand_model: data.brand_model,
-        serial_number: data.serial_number,
-        quantity: data.quantity,
-        notes: data.notes,
-      });
+      // CREATE
+      await create_equipment(data);
     }
 
     await loadEquipments();
 
-    resetEquipmentForm();
+    equipmentForm.value = {
+      brand_model: "",
+      serial_number: "",
+      quantity: 1,
+      notes: "",
+    };
 
+    editingEquipment.value = null;
+    showEquipmentModal.value = false;
   } catch (error) {
     console.error("Error saving equipment:", error);
   }
@@ -170,7 +227,6 @@ const resetEquipmentForm = () => {
     brand_model: "",
     serial_number: "",
     quantity: 1,
-    status: "Available",
     notes: "",
   };
 
@@ -180,7 +236,7 @@ const resetEquipmentForm = () => {
 
 const removeEquipment = async (equipment: Equipment) => {
   const confirmed = confirm(
-    `Are you sure you want to delete ${equipment.brand_model}?`
+    `Are you sure you want to delete ${equipment.brand_model}?`,
   );
 
   if (!confirmed) {
@@ -191,7 +247,6 @@ const removeEquipment = async (equipment: Equipment) => {
     await delete_equipment(equipment.id);
 
     await loadEquipments();
-
   } catch (error) {
     console.error("Error deleting equipment:", error);
   }
@@ -290,7 +345,9 @@ onMounted(() => {
                 Cancel
               </button>
 
-              <button type="submit" class="save-btn">Add Category</button>
+              <button type="submit" class="save-btn">
+                {{ editingEquipment ? "Save Changes" : "Add Equipment" }}
+              </button>
             </div>
           </form>
         </div>
@@ -335,6 +392,15 @@ onMounted(() => {
                   {{ equipment.status }}
                 </span>
               </div>
+              <div class="equipment-actions">
+                <button class="edit-btn" @click="openEditEquipment(equipment)">
+                  Edit
+                </button>
+
+                <button class="delete-btn" @click="removeEquipment(equipment)">
+                  Delete
+                </button>
+              </div>
             </div>
 
             <div
@@ -358,8 +424,16 @@ onMounted(() => {
         <div class="modal">
           <div class="modal-header">
             <div>
-              <h2>Add Equipment</h2>
-              <p>Add a new {{ selectedCategory?.name }} to the stock</p>
+              <h2>
+                {{ editingEquipment ? "Edit Equipment" : "Add Equipment" }}
+              </h2>
+              <p>
+                {{
+                  editingEquipment
+                    ? "Update equipment information"
+                    : `Add a new ${selectedCategory?.name} to the stock`
+                }}
+              </p>
             </div>
 
             <button class="close-btn" @click="showEquipmentModal = false">
@@ -367,7 +441,7 @@ onMounted(() => {
             </button>
           </div>
 
-          <form @submit.prevent="addEquipment">
+          <form @submit.prevent="saveEquipment">
             <div class="form-group">
               <label>Category</label>
 
@@ -389,7 +463,7 @@ onMounted(() => {
               <label>Serial Number</label>
 
               <input
-                v-model="equipmentForm.serial_Number"
+                v-model="equipmentForm.serial_number"
                 type="text"
                 placeholder="Enter serial number"
               />
@@ -424,7 +498,9 @@ onMounted(() => {
                 Cancel
               </button>
 
-              <button type="submit" class="save-btn">Add Equipment</button>
+              <button type="submit" class="save-btn">
+                {{ editingEquipment ? "Save Changes" : "Add Equipment" }}
+              </button>
             </div>
           </form>
         </div>
@@ -811,5 +887,40 @@ main {
   text-align: center;
   padding: 40px;
   color: #6b7280;
+}
+
+.equipment-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.edit-btn,
+.delete-btn {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.edit-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.edit-btn:hover {
+  background: #d71920;
+  color: white;
+}
+
+.delete-btn {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+  color: white;
 }
 </style>
