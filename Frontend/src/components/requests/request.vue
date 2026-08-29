@@ -24,6 +24,16 @@
           <label>Return Date</label>
           <input v-model="return_date" type="date" />
         </div>
+        <div class="field">
+          <label>
+            <input v-model="based_on_stock" type="checkbox" />
+            Based on stock
+          </label>
+
+          <small>
+            If enabled, the equipment will be taken from the stock when issued.
+          </small>
+        </div>
       </div>
     </div>
     <div class="block-1">
@@ -146,9 +156,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch , onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { create_request, update_request } from "../../services/request.service";
+import { get_equipments, type Equipment } from "../../services/equipment.service";
 
 interface RequestItem {
   id: number;
@@ -175,6 +186,7 @@ interface Request {
   created_at: string;
   updated_at: string;
   created_by: string;
+  based_on_stock: boolean;
   items: RequestItem[];
 }
 const props = defineProps<{
@@ -192,8 +204,33 @@ const employee_name = ref("");
 const employee_email = ref("");
 const reason = ref("");
 const remarks = ref("");
+
+const equipmentsStock = ref<Equipment[]>([]);
+const based_on_stock = ref(false);
 const otherDepartment = ref("");
 const otherAccess = ref("");
+
+const checkStock = () => {
+  const insufficientItems: string[] = [];
+
+  for (const equipment of equipement.value) {
+    const stockItem = equipmentsStock.value.find(
+      (item) =>
+        item.category === equipment.accessory_req &&
+        item.status === "Available",
+    );
+
+    const availableQuantity = stockItem?.quantity ?? 0;
+
+    if (equipment.quantity > availableQuantity) {
+      insufficientItems.push(
+        `${equipment.accessory_req} (demandé: ${equipment.quantity}, disponible: ${availableQuantity})`,
+      );
+    }
+  }
+
+  return insufficientItems;
+};
 
 const createRequest = async () => {
   if (!request_id.value) {
@@ -227,18 +264,48 @@ const createRequest = async () => {
       return;
     }
   }
+
+  // Vérification du stock uniquement si Based on stock est activé
+if (based_on_stock.value) {
+  for (const equipment of equipement.value) {
+    const availableStock = getAvailableStock(
+      equipment.accessory_req
+    );
+
+    if (equipment.status === "Issued" && equipment.quantity > availableStock) {
+      alert(
+        `${equipment.accessory_req} is insufficient in stock.\n` +
+        `Available: ${availableStock}\n` +
+        `Requested: ${equipment.quantity}\n\n` +
+        `The item will be set to Pending.`
+      );
+
+      equipment.status = "Pending";
+    }
+  }
+}
+
   try {
     const data = {
       request_id: request_id.value,
       issue_date: issue_date.value || null,
       return_date: return_date.value || null,
       date_issued: date_issued.value || null,
+
       employee_id: employee_id.value,
       employee_name: employee_name.value,
       employee_email: employee_email.value,
-      department: Dep.value === "Other" ? otherDepartment.value : Dep.value,
+
+      department:
+        Dep.value === "Other"
+          ? otherDepartment.value
+          : Dep.value,
+
       reason: reason.value,
       remarks: remarks.value,
+
+      based_on_stock: based_on_stock.value,
+
       items: equipement.value.map((equipment) => ({
         ...equipment,
         accessory_req:
@@ -247,24 +314,35 @@ const createRequest = async () => {
             : equipment.accessory_req,
       })),
     };
+
     if (props.editRequest) {
       await update_request(props.editRequest.id, data);
-
       alert("Request modified successfully");
     } else {
       await create_request(data);
-
       alert("Request created successfully");
     }
 
     emit("created");
+
   } catch (error: any) {
     console.error("BACKEND ERROR:", error);
+
     alert(
       props.editRequest
         ? "Failed to modify request."
         : "Failed to create request.",
     );
+  }
+};
+
+
+const loadStock = async () => {
+  try {
+    const response = await get_equipments();
+    equipmentsStock.value = response.data;
+  } catch (error) {
+    console.error("Error loading stock:", error);
   }
 };
 
@@ -321,6 +399,7 @@ watch(
     if (!request) return;
 
     request_id.value = request.request_id;
+    based_on_stock.value = request.based_on_stock;
     issue_date.value = request.issue_date || "";
     return_date.value = request.return_date || "";
     date_issued.value = request.date_issued || "";
@@ -343,6 +422,21 @@ watch(
   },
   { immediate: true },
 );
+
+const getAvailableStock = (category: string) => {
+  return equipmentsStock.value
+    .filter(
+      (equipment) =>
+        equipment.category === category &&
+        equipment.status === "Available",
+    )
+    .reduce((total, equipment) => total + equipment.quantity, 0);
+};
+
+onMounted(() => {
+  loadStock();
+});
+
 </script>
 
 <style scoped>
@@ -513,5 +607,33 @@ watch(
 
 .cancel-btn:hover {
   background: #d1d5db !important;
+}
+.field:has(input[type="checkbox"]) {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.field:has(input[type="checkbox"]) label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field:has(input[type="checkbox"]) input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.field:has(input[type="checkbox"]) small {
+  display: block;
+  margin-top: 8px;
+  margin-left: 28px;
+  color: #64748b;
+  font-size: 12px;
 }
 </style>
