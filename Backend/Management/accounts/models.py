@@ -38,15 +38,16 @@ class Request(models.Model):
 
 
 
-class RequestItem(models.Model) :
+class RequestItem(models.Model):
     request = models.ForeignKey(
         Request,
-        on_delete = models.CASCADE
+        on_delete=models.CASCADE,
+        related_name="items"
     )
     status = models.CharField(max_length=50, default="Pending")
     accessory_req = models.CharField(max_length=150)
-    brand_model = models.CharField(max_length=150 , blank=True)
-    serial_Number = models.CharField(max_length=150 , blank=True)
+    brand_model = models.CharField(max_length=150, blank=True)
+    serial_Number = models.CharField(max_length=150, blank=True)
     quantity = models.IntegerField()
 
 class Equipment(models.Model):

@@ -48,13 +48,30 @@ class RequestItemSerializer(serializers.ModelSerializer):
 class RequestSerializer(serializers.ModelSerializer):
 
     items = RequestItemSerializer(
-        source="requestitem_set",
         many=True
     )
 
     class Meta:
         model = Request
-        fields = "__all__"
+        fields = [
+            "id",
+            "request_id",
+            "issue_date",
+            "return_date",
+            "employee_id",
+            "employee_name",
+            "employee_email",
+            "department",
+            "reason",
+            "remarks",
+            "date_issued",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "based_on_stock",
+            "overdue_email_sent",
+            "items",
+        ]
         extra_kwargs = {
             "created_by": {"read_only": True}
         }
@@ -77,7 +94,7 @@ class RequestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
 
-        items = validated_data.pop("requestitem_set")
+        items = validated_data.pop("items")
 
         request = Request.objects.create(
             **validated_data
