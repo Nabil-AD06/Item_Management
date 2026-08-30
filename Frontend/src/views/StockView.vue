@@ -384,7 +384,7 @@ onMounted(() => {
 
               <div>Serial: {{ equipment.serial_number || "—" }}</div>
 
-              <div>Quantity: {{ equipment.quantity }}</div>
+              <div>Quantity: {{ equipment.quantity < 0 ? 0 : equipment.quantity }}</div>
 
               <div>
                 Status:

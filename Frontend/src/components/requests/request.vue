@@ -24,16 +24,6 @@
           <label>Return Date</label>
           <input v-model="return_date" type="date" />
         </div>
-        <div class="field">
-          <label>
-            <input v-model="based_on_stock" type="checkbox" />
-            Based on stock
-          </label>
-
-          <small>
-            If enabled, the equipment will be taken from the stock when issued.
-          </small>
-        </div>
       </div>
     </div>
     <div class="block-1">
@@ -158,7 +148,7 @@
 <script setup lang="ts">
 import { ref, watch , onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { create_request, update_request } from "../../services/request.service";
+import { create_request, update_request ,get_requests} from "../../services/request.service";
 import { get_equipments, type Equipment } from "../../services/equipment.service";
 
 interface RequestItem {
@@ -206,7 +196,37 @@ const reason = ref("");
 const remarks = ref("");
 
 const equipmentsStock = ref<Equipment[]>([]);
-const based_on_stock = ref(false);
+const generateNextRequestId = async () => {
+  try {
+    const response = await get_requests();
+
+    const requests = response.data;
+
+    let maxNumber = 0;
+
+    for (const request of requests) {
+      const match = request.request_id?.match(/^REQ-(\d+)$/);
+
+      if (match) {
+        const number = parseInt(match[1], 10);
+
+        if (number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    }
+
+    const nextNumber = maxNumber + 1;
+
+    request_id.value = `REQ-${String(nextNumber).padStart(4, "0")}`;
+  } catch (error) {
+    console.error("Error generating Request ID:", error);
+
+    request_id.value = "REQ-0001";
+  }
+};
+
+
 const otherDepartment = ref("");
 const otherAccess = ref("");
 
@@ -272,15 +292,16 @@ if (based_on_stock.value) {
       equipment.accessory_req
     );
 
-    if (equipment.status === "Issued" && equipment.quantity > availableStock) {
+    if (
+      equipment.status === "Issued" &&
+      equipment.quantity > availableStock
+    ) {
       alert(
         `${equipment.accessory_req} is insufficient in stock.\n` +
         `Available: ${availableStock}\n` +
         `Requested: ${equipment.quantity}\n\n` +
-        `The item will be set to Pending.`
+        `The request will still be created.`
       );
-
-      equipment.status = "Pending";
     }
   }
 }
@@ -393,32 +414,56 @@ const Accessories = [
 ];
 const Statuses = ["Pending", "Issued", "Returned"];
 
+const based_on_stock = ref(false);
+
+onMounted(() => {
+  loadStock();
+
+  const savedSetting = localStorage.getItem("based_on_stock");
+
+  if (savedSetting !== null) {
+    based_on_stock.value = savedSetting === "true";
+  }
+});
+
 watch(
   () => props.editRequest,
-  (request) => {
-    if (!request) return;
+  async (request) => {
+    // =========================
+    // MODE MODIFICATION
+    // =========================
+    if (request) {
+      request_id.value = request.request_id;
 
-    request_id.value = request.request_id;
-    based_on_stock.value = request.based_on_stock;
-    issue_date.value = request.issue_date || "";
-    return_date.value = request.return_date || "";
-    date_issued.value = request.date_issued || "";
-    employee_id.value = request.employee_id;
-    employee_name.value = request.employee_name;
-    employee_email.value = request.employee_email;
+      based_on_stock.value = request.based_on_stock;
+      issue_date.value = request.issue_date || "";
+      return_date.value = request.return_date || "";
+      date_issued.value = request.date_issued || "";
 
-    reason.value = request.reason;
-    remarks.value = request.remarks;
+      employee_id.value = request.employee_id;
+      employee_name.value = request.employee_name;
+      employee_email.value = request.employee_email;
 
-    Dep.value = request.department;
+      reason.value = request.reason;
+      remarks.value = request.remarks;
 
-    equipement.value = request.items.map((item) => ({
-      accessory_req: item.accessory_req,
-      quantity: item.quantity,
-      status: item.status,
-      brand_model: item.brand_model,
-      serial_Number: item.serial_Number,
-    }));
+      Dep.value = request.department;
+
+      equipement.value = request.items.map((item) => ({
+        accessory_req: item.accessory_req,
+        quantity: item.quantity,
+        status: item.status,
+        brand_model: item.brand_model,
+        serial_Number: item.serial_Number,
+      }));
+
+      return;
+    }
+
+    // =========================
+    // MODE NOUVELLE REQUEST
+    // =========================
+    await generateNextRequestId();
   },
   { immediate: true },
 );
@@ -432,10 +477,6 @@ const getAvailableStock = (category: string) => {
     )
     .reduce((total, equipment) => total + equipment.quantity, 0);
 };
-
-onMounted(() => {
-  loadStock();
-});
 
 </script>
 

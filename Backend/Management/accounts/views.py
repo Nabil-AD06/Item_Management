@@ -176,23 +176,21 @@ class CreateAdminView(APIView):
         )
         
 class CreateRequestView(APIView):
+
     def post(self, request):
+
         serializer = RequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         created_request = serializer.save(
             created_by=request.user.username
-            )
+        )
         return Response(
             {
-                "message" : "Request created successfully !"
+                "message": "Request created successfully!"
             },
             status=status.HTTP_201_CREATED
-            )
-        # except Exception as e:
-        #     return Response({"error": str(e)},
-        #     status=status.HTTP_400_BAD_REQUEST
-        # )
-
+        )
 class RequestListView(APIView):
 
     def get(self, request):
@@ -203,6 +201,7 @@ class RequestListView(APIView):
 class RequestDetailView(APIView):
 
     def put(self, request, pk):
+
         try:
             request_obj = Request.objects.get(pk=pk)
         except Request.DoesNotExist:
@@ -211,18 +210,81 @@ class RequestDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Sauvegarder les anciens items AVANT modification
+        old_items = list(request_obj.requestitem_set.all())
+
         serializer = RequestSerializer(
             request_obj,
             data=request.data
         )
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Sauvegarder la modification
+        updated_request = serializer.save()
+
+        # ---------------------------------------
+        # GESTION DU STOCK
+        # ---------------------------------------
+
+        if updated_request.based_on_stock:
+
+            new_items = list(
+                updated_request.requestitem_set.all()
+            )
+
+            for new_item in new_items:
+
+                # Chercher l'ancien item
+                old_item = next(
+                    (
+                        item
+                        for item in old_items
+                        if item.accessory_req == new_item.accessory_req
+                    ),
+                    None
+                )
+
+                old_status = old_item.status if old_item else None
+                new_status = new_item.status
+
+                # ---------------------------------------
+                # Pending → Issued
+                # ---------------------------------------
+
+                if old_status != "Issued" and new_status == "Issued":
+
+                    equipment = Equipment.objects.filter(
+                        category=new_item.accessory_req,
+                        status="Available"
+                    ).first()
+
+                    if equipment:
+                        equipment.quantity -= new_item.quantity
+                        equipment.save()
+
+                # ---------------------------------------
+                # Issued → Pending / Returned
+                # ---------------------------------------
+
+                elif old_status == "Issued" and new_status != "Issued":
+
+                    equipment = Equipment.objects.filter(
+                        category=new_item.accessory_req,
+                        status="Available"
+                    ).first()
+
+                    if equipment:
+                        equipment.quantity += old_item.quantity
+                        equipment.save()
 
         return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+            RequestSerializer(updated_request).data,
+            status=status.HTTP_200_OK
         )
 
     def delete(self, request, pk):
@@ -233,9 +295,27 @@ class RequestDetailView(APIView):
                 {"detail": "Request not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
-
+    
+        # Restaurer le stock si la request était basée sur le stock
+        # et que l'équipement était Issued
+        if request_obj.based_on_stock:
+    
+            for item in request_obj.requestitem_set.all():
+    
+                if item.status == "Issued":
+    
+                    equipment = Equipment.objects.filter(
+                        category=item.accessory_req,
+                        status="Available"
+                    ).first()
+    
+                    if equipment:
+                        equipment.quantity += item.quantity
+                        equipment.save()
+    
+        # Supprimer la request
         request_obj.delete()
-
+    
         return Response(
             {"detail": "Request deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
@@ -244,6 +324,7 @@ class RequestDetailView(APIView):
 class RequestItemDeleteView(APIView):
 
     def delete(self, request, pk):
+
         try:
             item = RequestItem.objects.get(pk=pk)
         except RequestItem.DoesNotExist:
@@ -252,13 +333,29 @@ class RequestItemDeleteView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Récupérer la request liée à l'item
+        request_obj = item.request
+
+        # Si l'item était Issued et basé sur le stock,
+        # on remet sa quantité dans le stock
+        if request_obj.based_on_stock and item.status == "Issued":
+
+            equipment = Equipment.objects.filter(
+                category=item.accessory_req,
+                status="Available"
+            ).first()
+
+            if equipment:
+                equipment.quantity += item.quantity
+                equipment.save()
+
+        # Supprimer l'item
         item.delete()
 
         return Response(
             {"detail": "Item deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )
-
 
 class EquipmentListCreateView(APIView):
 

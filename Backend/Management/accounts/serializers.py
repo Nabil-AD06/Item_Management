@@ -46,9 +46,11 @@ class RequestItemSerializer(serializers.ModelSerializer):
 
 
 class RequestSerializer(serializers.ModelSerializer):
+
     items = RequestItemSerializer(
         source="requestitem_set",
-        many=True)
+        many=True
+    )
 
     class Meta:
         model = Request
@@ -57,36 +59,133 @@ class RequestSerializer(serializers.ModelSerializer):
             "created_by": {"read_only": True}
         }
 
+    def update_stock(self, category, quantity_change):
+        """
+        quantity_change:
+        positif  -> remettre du stock
+        negatif  -> retirer du stock
+        """
+
+        equipment = Equipment.objects.filter(
+            category=category,
+            status="Available"
+        ).first()
+
+        if equipment:
+            equipment.quantity += quantity_change
+            equipment.save()
+
     def create(self, validated_data):
+
         items = validated_data.pop("requestitem_set")
 
-        request = Request.objects.create(**validated_data)
+        request = Request.objects.create(
+            **validated_data
+        )
 
         for item in items:
-            RequestItem.objects.create(
+
+            request_item = RequestItem.objects.create(
                 request=request,
                 **item
             )
 
+            # Seulement si Based on stock + Issued
+            if (
+                request.based_on_stock
+                and request_item.status == "Issued"
+            ):
+                self.update_stock(
+                    request_item.accessory_req,
+                    -request_item.quantity
+                )
+
         return request
+
     def update(self, instance, validated_data):
-        items = validated_data.pop("requestitem_set", None)
+
+        items = validated_data.pop(
+            "requestitem_set",
+            None
+        )
     
-        # Modifier les champs de la Request
+        # ==========================================
+        # ANCIEN ÉTAT
+        # ==========================================
+    
+        old_based_on_stock = instance.based_on_stock
+    
+        old_items = list(
+            instance.requestitem_set.all()
+        )
+    
+        # ==========================================
+        # NOUVEL ÉTAT DE BASED ON STOCK
+        # ==========================================
+    
+        new_based_on_stock = validated_data.get(
+            "based_on_stock",
+            instance.based_on_stock
+        )
+    
+        # ==========================================
+        # RESTAURER L'ANCIEN STOCK
+        #
+        # On remet d'abord ce qui avait été retiré
+        # par l'ancienne version de la request.
+        # ==========================================
+    
+        if old_based_on_stock:
+    
+            for old_item in old_items:
+    
+                if old_item.status == "Issued":
+    
+                    self.update_stock(
+                        old_item.accessory_req,
+                        old_item.quantity
+                    )
+    
+        # ==========================================
+        # MODIFIER LA REQUEST
+        # ==========================================
+    
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
     
         instance.save()
     
-        # Modifier les équipements
+        # ==========================================
+        # MODIFIER LES ITEMS
+        # ==========================================
+    
         if items is not None:
+    
             instance.requestitem_set.all().delete()
     
             for item in items:
+    
                 RequestItem.objects.create(
                     request=instance,
                     **item
                 )
+    
+        # ==========================================
+        # RETIRER LE NOUVEAU STOCK
+        # ==========================================
+    
+        if new_based_on_stock:
+    
+            new_items = instance.requestitem_set.all()
+    
+            for new_item in new_items:
+    
+                if new_item.status == "Issued":
+    
+                    self.update_stock(
+                        new_item.accessory_req,
+                        -new_item.quantity
+                    )
     
         return instance
 

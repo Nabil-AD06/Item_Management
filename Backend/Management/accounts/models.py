@@ -33,6 +33,8 @@ class Request(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.CharField(max_length=150)
     based_on_stock = models.BooleanField(default=False)
+    overdue_email_sent = models.BooleanField(default=False)
+    
 
 
 
@@ -45,7 +47,7 @@ class RequestItem(models.Model) :
     accessory_req = models.CharField(max_length=150)
     brand_model = models.CharField(max_length=150 , blank=True)
     serial_Number = models.CharField(max_length=150 , blank=True)
-    quantity = models.PositiveIntegerField()
+    quantity = models.IntegerField()
 
 class Equipment(models.Model):
     CATEGORY_CHOICES = [
@@ -62,41 +64,16 @@ class Equipment(models.Model):
         ("Available", "Available"),
         ("Issued", "Issued"),
         ("Maintenance", "Maintenance"),
-        ("Lost", "Lost"),
-    ]
-    category = models.CharField(
-        max_length=100,
-        choices=CATEGORY_CHOICES
-    )
-    brand_model = models.CharField(
-        max_length=150,
-        blank=True
-    )
-    serial_number = models.CharField(
-        max_length=150,
-        blank=True
-    )
-    quantity = models.PositiveIntegerField(
-        default=1
-    )
-    status = models.CharField(
-        max_length=50,
-        choices=STATUS_CHOICES,
-        default="Available"
-    )
-    location = models.CharField(
-        max_length=150,
-        blank=True
-    )
-    notes = models.TextField(
-        blank=True
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
+        ("Lost", "Lost"),]
+    category = models.CharField(max_length=100,choices=CATEGORY_CHOICES)
+    brand_model = models.CharField(max_length=150,blank=True)
+    serial_number = models.CharField(max_length=150,blank=True)
+    quantity = models.IntegerField(default=1)
+    status = models.CharField(max_length=50,choices=STATUS_CHOICES,default="Available")
+    location = models.CharField(max_length=150,blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f"{self.category} - {self.brand_model}"
 

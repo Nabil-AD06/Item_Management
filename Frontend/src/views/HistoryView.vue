@@ -3,12 +3,9 @@ import Sidebar from "../components/layout/Sidebar.vue";
 import Header from "@/components/layout/Header.vue";
 import request from "@/components/requests/request.vue";
 import { get_requests, delete_request_item } from "../services/request.service";
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, computed , watch } from "vue";
 
 const activeTab = ref("");
-const searchText = ref("");
-const filterType = ref("request");
 const selectedRequest = ref<Request | null>(null);
 
 const currentPage = ref(1);
@@ -67,13 +64,18 @@ interface Request {
 }
 
 const filteredRequests = computed(() => {
+  // Ne garder que les requests qui possèdent au moins un item
+  const requestsWithItems = requests.value.filter(
+    (request) => request.items && request.items.length > 0
+  );
+
   if (!searchValue.value) {
-    return requests.value;
+    return requestsWithItems;
   }
 
   const value = searchValue.value.toLowerCase();
 
-  return requests.value.filter((request) => {
+  return requestsWithItems.filter((request) => {
     if (searchType.value === "request") {
       return request.request_id.toLowerCase().includes(value);
     }
@@ -95,12 +97,14 @@ const filteredRequests = computed(() => {
       return request.items.some((item) =>
         item.accessory_req
           .toLowerCase()
-          .includes(accessorySearch.toLowerCase()),
+          .includes(accessorySearch.toLowerCase())
       );
     }
 
     if (searchType.value === "status") {
-      return request.items.some((item) => item.status.toLowerCase() === value);
+      return request.items.some(
+        (item) => item.status.toLowerCase() === value
+      );
     }
 
     return true;
@@ -117,10 +121,26 @@ const editRequest = (request: Request) => {
   activeTab.value = "request";
 };
 
+watch(filteredRequests, () => {
+  if (currentPage.value > totalPages.value) {
+    currentPage.value = totalPages.value || 1;
+  }
+});
+
 const loadRequests = async () => {
-  const response = await get_requests();
-  requests.value = response.data;
+  try {
+    const response = await get_requests();
+    requests.value = response.data;
+
+    // Recalculer la page maximale disponible
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value || 1;
+    }
+  } catch (error) {
+    console.error("Error loading requests:", error);
+  }
 };
+
 
 onMounted(() => {
   loadRequests();

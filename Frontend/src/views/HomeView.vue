@@ -61,7 +61,14 @@ const goToHistory = () => {
 };
 
 const recentRequests = computed(() => {
-  return requests.value.slice(0, 5);
+  return requests.value
+    .flatMap((request) =>
+      request.items.map((item) => ({
+        request,
+        item,
+      })),
+    )
+    .slice(0, 5);
 });
 
 const overdueRequests = computed(() => {
@@ -167,62 +174,67 @@ const deleteItem = async (item: RequestItem) => {
               </thead>
 
               <tbody>
-                <template v-for="request in recentRequests" :key="request.id">
-                  <tr v-for="item in request.items" :key="item.id">
-                    <td>
-                      <strong>{{ request.request_id }}</strong>
-                    </td>
+                <tr v-for="recent in recentRequests" :key="recent.item.id">
+                  <td>
+                    <strong>{{ recent.request.request_id }}</strong>
+                  </td>
 
-                    <td>
-                      {{ request.employee_id }}
-                    </td>
+                  <td>
+                    {{ recent.request.employee_id }}
+                  </td>
 
-                    <td>
-                      {{ request.employee_name || "—" }}
-                    </td>
-                    <td>
-                      {{ item.accessory_req }}
-                    </td>
+                  <td>
+                    {{ recent.request.employee_name || "—" }}
+                  </td>
 
-                    <td>
-                      {{ item.brand_model || "—" }}
-                    </td>
+                  <td>
+                    {{ recent.item.accessory_req }}
+                  </td>
 
-                    <td>
-                      {{ item.quantity }}
-                    </td>
+                  <td>
+                    {{ recent.item.brand_model || "—" }}
+                  </td>
 
-                    <td>
-                      <span class="status" :class="item.status.toLowerCase()">
-                        {{ item.status }}
-                      </span>
-                    </td>
+                  <td>
+                    {{ recent.item.quantity }}
+                  </td>
 
-                    <td>
-                      <div class="actions">
-                        <div class="left-actions">
-                          <button
-                            class="details-btn"
-                            @click="selectedRequest = request"
-                          >
-                            Details
-                          </button>
+                  <td>
+                    <span
+                      class="status"
+                      :class="recent.item.status.toLowerCase()"
+                    >
+                      {{ recent.item.status }}
+                    </span>
+                  </td>
 
-                          <button
-                            class="edit-btn"
-                            @click="editRequest(request)"
-                          >
-                            Edit
-                          </button>
-                        </div>
+                  <td>
+                    <div class="actions">
+                      <div class="left-actions">
+                        <button
+                          class="details-btn"
+                          @click="selectedRequest = recent.request"
+                        >
+                          Details
+                        </button>
 
-                        <button @click="deleteItem(item)" class="delete-btn">
-                          Delete
+                        <button
+                          class="edit-btn"
+                          @click="editRequest(recent.request)"
+                        >
+                          Edit
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                </template>
+
+                      <button
+                        @click="deleteItem(recent.item)"
+                        class="delete-btn"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -294,10 +306,9 @@ const deleteItem = async (item: RequestItem) => {
                         Edit
                       </button>
 
-                      <button
-                        @click="deleteItem(item)"
-                        class="deleted-btn"
-                      >Delete</button>
+                      <button @click="deleteItem(item)" class="deleted-btn">
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1032,7 +1043,7 @@ td:nth-child(8) {
   border-color: #dc2626;
 }
 
-.deleted-btn{
+.deleted-btn {
   margin-left: auto;
   margin-right: 0;
   padding: 7px 11px;
