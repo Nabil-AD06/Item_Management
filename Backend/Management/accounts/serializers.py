@@ -122,7 +122,7 @@ class RequestSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
 
         items = validated_data.pop(
-            "requestitem_set",
+            "items",
             None
         )
     
@@ -133,7 +133,7 @@ class RequestSerializer(serializers.ModelSerializer):
         old_based_on_stock = instance.based_on_stock
     
         old_items = list(
-            instance.requestitem_set.all()
+            instance.items.all()
         )
     
         # ==========================================
@@ -178,7 +178,7 @@ class RequestSerializer(serializers.ModelSerializer):
     
         if items is not None:
     
-            instance.requestitem_set.all().delete()
+            instance.items.all().delete()
     
             for item in items:
     
@@ -193,7 +193,7 @@ class RequestSerializer(serializers.ModelSerializer):
     
         if new_based_on_stock:
     
-            new_items = instance.requestitem_set.all()
+            new_items = instance.items.all()
     
             for new_item in new_items:
     

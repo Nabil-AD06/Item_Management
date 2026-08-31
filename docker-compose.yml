@@ -18,6 +18,23 @@ services:
       - postgres
       - keycloak
 
+  scheduler:
+    build:
+      context: ./Backend
+      dockerfile: dockerfile
+
+    container_name: scheduler
+
+    volumes:
+      - ./Backend/Management:/app
+
+    command: sh /app/run_scheduler.sh
+
+    depends_on:
+      - postgres
+      - keycloak
+      - backend
+
   frontend:
     build:
       context: ./Frontend

@@ -1,0 +1,1 @@
+0 9 * * * cd /app && python manage.py check_overdue_requests >> /var/log/overdue.log 2>&1

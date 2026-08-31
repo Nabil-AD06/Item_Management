@@ -201,7 +201,6 @@ class RequestListView(APIView):
 class RequestDetailView(APIView):
 
     def put(self, request, pk):
-
         try:
             request_obj = Request.objects.get(pk=pk)
         except Request.DoesNotExist:
@@ -210,9 +209,21 @@ class RequestDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Sauvegarder les anciens items AVANT modification
-        old_items = list(request_obj.requestitem_set.all())
+        # =========================================
+        # 1. Sauvegarder les anciens items
+        # =========================================
+        old_items = list(request_obj.items.all())
 
+        # Dictionnaire pour retrouver facilement
+        # l'ancien item par accessory_req
+        old_items_dict = {
+            item.accessory_req: item
+            for item in old_items
+        }
+
+        # =========================================
+        # 2. Valider la nouvelle request
+        # =========================================
         serializer = RequestSerializer(
             request_obj,
             data=request.data
@@ -224,64 +235,100 @@ class RequestDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Sauvegarder la modification
+        # =========================================
+        # 3. Sauvegarder la modification
+        # =========================================
         updated_request = serializer.save()
 
-        # ---------------------------------------
-        # GESTION DU STOCK
-        # ---------------------------------------
-
+        # =========================================
+        # 4. Gestion du stock
+        # =========================================
         if updated_request.based_on_stock:
 
             new_items = list(
-                updated_request.requestitem_set.all()
+                updated_request.items.all()
             )
 
             for new_item in new_items:
 
-                # Chercher l'ancien item
-                old_item = next(
-                    (
-                        item
-                        for item in old_items
-                        if item.accessory_req == new_item.accessory_req
-                    ),
-                    None
+                # Ancien item correspondant
+                old_item = old_items_dict.get(
+                    new_item.accessory_req
                 )
 
+                # Anciennes valeurs
+                old_quantity = old_item.quantity if old_item else 0
                 old_status = old_item.status if old_item else None
+
+                # Nouvelles valeurs
+                new_quantity = new_item.quantity
                 new_status = new_item.status
 
-                # ---------------------------------------
-                # Pending → Issued
-                # ---------------------------------------
+                # =========================================
+                # Quantité réellement prise du stock AVANT
+                # =========================================
+                old_used = (
+                    old_quantity
+                    if old_status == "Issued"
+                    else 0
+                )
 
-                if old_status != "Issued" and new_status == "Issued":
+                # =========================================
+                # Quantité réellement prise du stock APRÈS
+                # =========================================
+                new_used = (
+                    new_quantity
+                    if new_status == "Issued"
+                    else 0
+                )
 
-                    equipment = Equipment.objects.filter(
-                        category=new_item.accessory_req,
-                        status="Available"
-                    ).first()
+                # =========================================
+                # Différence
+                # =========================================
+                difference = new_used - old_used
 
-                    if equipment:
-                        equipment.quantity -= new_item.quantity
-                        equipment.save()
+                # Rien à modifier
+                if difference == 0:
+                    continue
 
-                # ---------------------------------------
-                # Issued → Pending / Returned
-                # ---------------------------------------
+                # =========================================
+                # Trouver le stock disponible
+                # =========================================
+                equipment = Equipment.objects.filter(
+                    category=new_item.accessory_req,
+                    status="Available"
+                ).first()
 
-                elif old_status == "Issued" and new_status != "Issued":
+                if not equipment:
+                    continue
 
-                    equipment = Equipment.objects.filter(
-                        category=new_item.accessory_req,
-                        status="Available"
-                    ).first()
+                # =========================================
+                # Appliquer la différence
+                # =========================================
 
-                    if equipment:
-                        equipment.quantity += old_item.quantity
-                        equipment.save()
+                # Exemple :
+                # old_used = 5
+                # new_used = 8
+                # difference = +3
+                # => retirer 3 du stock
 
+                if difference > 0:
+                    equipment.quantity -= difference
+
+                # Exemple :
+                # old_used = 8
+                # new_used = 3
+                # difference = -5
+                # => remettre 5 dans le stock
+
+                else:
+                    equipment.quantity += abs(difference)
+
+                equipment.save()
+
+        # =========================================
+        # 5. Retourner la request
+        # =========================================
         return Response(
             RequestSerializer(updated_request).data,
             status=status.HTTP_200_OK
@@ -300,7 +347,7 @@ class RequestDetailView(APIView):
         # et que l'équipement était Issued
         if request_obj.based_on_stock:
     
-            for item in request_obj.requestitem_set.all():
+            for item in request_obj.items.all():
     
                 if item.status == "Issued":
     
