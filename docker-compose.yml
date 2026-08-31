@@ -82,6 +82,7 @@ services:
 
     volumes:
       - ./keycloak/themes:/opt/keycloak/themes
+      - ./keycloak/item-management-realm.json:/opt/keycloak/data/import/item-management-realm.json
 
     depends_on:
       - postgres
