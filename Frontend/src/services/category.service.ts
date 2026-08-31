@@ -15,3 +15,7 @@ export const create_category = (name: string) => {
     name,
   });
 };
+
+export const delete_category = (id: number) => {
+  return api.delete(`/categories/${id}/`);
+};

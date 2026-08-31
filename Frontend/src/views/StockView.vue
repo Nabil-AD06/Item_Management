@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header.vue";
 import {
   get_categories,
   create_category,
+  delete_category,
   type Category,
 } from "@/services/category.service";
 import {
@@ -252,6 +253,31 @@ const removeEquipment = async (equipment: Equipment) => {
   }
 };
 
+const removeCategory = async (category: Category) => {
+  const confirmed = confirm(
+    `Are you sure you want to delete the category "${category.name}"?`,
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await delete_category(category.id);
+
+    // Recharger les catégories
+    await loadCategories();
+
+    // Si la catégorie supprimée était sélectionnée, fermer le modal
+    if (selectedCategory.value?.id === category.id) {
+      selectedCategory.value = null;
+      showItemsModal.value = false;
+    }
+  } catch (error) {
+    console.error("Error deleting category:", error);
+  }
+};
+
 onMounted(() => {
   loadEquipments();
   loadCategories();
@@ -290,9 +316,18 @@ onMounted(() => {
               </p>
             </div>
 
-            <button class="view-btn" @click="viewItems(category)">
-              View Items
-            </button>
+            <div class="category-actions">
+              <button class="view-btn" @click="viewItems(category)">
+                View Items
+              </button>
+
+              <button
+                class="delete-category-btn"
+                @click="removeCategory(category)"
+              >
+                Delete
+              </button>
+            </div>
           </div>
 
           <!-- Add Item -->
@@ -384,7 +419,9 @@ onMounted(() => {
 
               <div>Serial: {{ equipment.serial_number || "—" }}</div>
 
-              <div>Quantity: {{ equipment.quantity < 0 ? 0 : equipment.quantity }}</div>
+              <div>
+                Quantity: {{ equipment.quantity < 0 ? 0 : equipment.quantity }}
+              </div>
 
               <div>
                 Status:
@@ -923,4 +960,29 @@ main {
   background: #dc2626;
   color: white;
 }
+
+
+.category-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.delete-category-btn {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.delete-category-btn:hover {
+  background: #dc2626;
+  color: white;
+}
+
 </style>

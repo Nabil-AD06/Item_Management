@@ -1,0 +1,53 @@
+# Asset Management
+
+## Description
+
+Asset Management est une application web permettant de gérer les équipements informatiques d'une entreprise.
+
+L'application permet notamment de :
+
+- Gérer les administrateurs
+- Gérer les catégories d'équipements
+- Gérer le stock des équipements
+- Ajouter, modifier et supprimer des équipements
+- Créer des demandes d'équipements pour les employés
+- Suivre les équipements attribués aux employés
+- Définir une date de retour pour chaque demande
+- Détecter automatiquement les demandes en retard
+- Envoyer automatiquement un email à l'employé lorsqu'un équipement n'a pas été retourné à la date prévue
+- Gérer les utilisateurs et l'authentification avec Keycloak
+
+---
+
+# 1. Configuration de l'application
+
+Avant d'utiliser l'application, certaines variables doivent être configurées.
+
+En particulier, la configuration de l'envoi des emails doit être adaptée à l'environnement de chaque utilisateur.
+
+---
+
+# 2. Configuration de l'email
+
+L'application utilise un serveur SMTP pour envoyer les emails aux employés.
+
+Dans le fichier de configuration Django (`settings.py`), vous trouverez :
+
+```python
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "YOURMAIL@gmail.com"
+EMAIL_HOST_PASSWORD = "YOUR_GOOGLE_GENERATE_PASSWORD"
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+
+
+
+Pour lancer les services utiliser docker et lancer docker compose up --build -d
+
