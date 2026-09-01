@@ -46,7 +46,9 @@ EMAIL_HOST_PASSWORD = "YOUR_GOOGLE_GENERATE_PASSWORD"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
-
+you can sign in with : nabil@gmail.com 
+password : nabil@2006 
+(then create your account in settings)
 
 
 Pour lancer les services utiliser docker et lancer docker compose up --build -d
