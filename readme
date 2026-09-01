@@ -51,3 +51,561 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 Pour lancer les services utiliser docker et lancer docker compose up --build -d
 
+
+
+# ASSET MANAGEMENT – TECHNICAL DOCUMENTATION
+
+Asset Management is a web application designed to manage IT equipment inventory and its allocation to employees.
+
+The application allows administrators to manage available equipment, create and track equipment requests, manage categories, consult the history of operations, search and filter information, and automatically send notifications when equipment is not returned by the expected return date.
+
+The application is composed of several services that communicate with each other:
+
+- Frontend: user interface developed with Vue.js and TypeScript.
+- Backend: API developed with Django and Django REST Framework.
+- Database: PostgreSQL.
+- Authentication: Keycloak.
+- Scheduler: service used to automatically execute scheduled tasks, especially checking requests whose return date has passed.
+- Docker: used to run all services in containers.
+
+----------------------------------------------------------------------
+ARCHITECTURE
+----------------------------------------------------------------------
+
+The general application flow is:
+
+User
+    ↓
+Vue.js Frontend
+    ↓
+Keycloak → Authentication
+    ↓
+Django / REST API Backend
+    ↓
+PostgreSQL
+
+The scheduler also communicates with the backend and database to execute scheduled tasks automatically.
+
+----------------------------------------------------------------------
+AUTHENTICATION – KEYCLOAK
+----------------------------------------------------------------------
+
+Keycloak is used to manage administrator authentication.
+
+The frontend redirects the user to Keycloak when the user is not authenticated.
+
+After successful authentication, Keycloak provides the necessary information allowing the frontend to access the application.
+
+The project uses:
+
+- Realm: item-management
+- Frontend client: frontend
+
+The Keycloak configuration is saved in:
+
+keycloak/item-management-realm.json
+
+This file allows the Keycloak Realm configuration to be recreated on another machine.
+
+When setting up the project on a new computer, it is important to verify that the Realm and Keycloak client match the values used by the frontend.
+
+The frontend uses the following variables:
+
+VITE_KEYCLOAK_URL
+VITE_KEYCLOAK_REALM
+VITE_KEYCLOAK_CLIENT_ID
+
+Example:
+
+VITE_KEYCLOAK_URL=http://localhost:8080
+VITE_KEYCLOAK_REALM=item-management
+VITE_KEYCLOAK_CLIENT_ID=frontend
+
+----------------------------------------------------------------------
+STOCK MANAGEMENT
+----------------------------------------------------------------------
+
+The Equipment Stock section is used to manage IT equipment inventory.
+
+Equipment is organized into categories.
+
+Examples of categories:
+
+- Laptop
+- Desktop
+- Monitor
+- Keyboard
+- Mouse
+- Headset
+- WebCam
+- Other
+
+Administrators can also create new categories directly from the application.
+
+For each category, the application displays the available quantity.
+
+The administrator can select a category to view the equipment associated with it.
+
+For each equipment item, the main information includes:
+
+- Category
+- Brand / Model
+- Serial Number
+- Quantity
+- Notes
+
+The administrator can:
+
+- Add equipment
+- Edit equipment
+- Delete equipment
+- View equipment belonging to a category
+- Add a new category
+- Delete a category
+
+When identical equipment is added to the stock, the application can combine the quantities instead of unnecessarily creating multiple identical entries.
+
+----------------------------------------------------------------------
+CATEGORY MANAGEMENT
+----------------------------------------------------------------------
+
+Categories are stored in the Category table.
+
+A category contains information such as:
+
+- id
+- name
+- created_at
+
+Available operations include:
+
+- Create a category
+- View categories
+- Delete a category
+
+Categories are used to organize the equipment in the stock.
+
+----------------------------------------------------------------------
+REQUEST MANAGEMENT
+----------------------------------------------------------------------
+
+A request represents the allocation of equipment to an employee.
+
+A request contains information such as:
+
+- request_id
+- employee
+- employee email
+- department
+- issue date
+- expected return date
+- reason for the request
+- remarks
+- creation date
+- administrator who created the request
+- information indicating whether the request uses stock management
+
+A request can contain multiple equipment items through the relationship between Request and RequestItem.
+
+For example, a single request can contain:
+
+- 1 Laptop
+- 1 Mouse
+- 1 Keyboard
+
+----------------------------------------------------------------------
+EQUIPMENT ALLOCATION
+----------------------------------------------------------------------
+
+When a request is created with the "Based on stock" option enabled, the application takes the available stock quantities into account.
+
+The purpose is to prevent assigning a quantity greater than the quantity currently available in the stock.
+
+The "Based on stock" option can be enabled or disabled from the Settings page.
+
+When this feature is enabled, equipment allocation and return operations are linked to the quantities available in the stock.
+
+----------------------------------------------------------------------
+EQUIPMENT RETURN
+----------------------------------------------------------------------
+
+Each request can have a return date.
+
+The return date is used to determine whether the equipment should already have been returned.
+
+When an employee returns their equipment, the request information is updated and the corresponding equipment can be marked as returned.
+
+If all equipment associated with a request has been returned, no additional overdue reminder is sent.
+
+----------------------------------------------------------------------
+AUTOMATIC OVERDUE EMAIL NOTIFICATION
+----------------------------------------------------------------------
+
+The application includes an automatic email notification system for equipment that has not been returned on time.
+
+The scheduler regularly executes the following Django management command:
+
+python manage.py check_overdue_requests
+
+This command searches for requests:
+
+- whose return_date has passed;
+- that still contain at least one equipment item that has not been returned;
+- that have a valid employee email address;
+- for which an overdue email has not already been sent.
+
+When an overdue request is detected, an email is automatically sent to the employee.
+
+The email contains information about the request and the equipment that still needs to be returned.
+
+After the email is successfully sent, the following field is updated:
+
+overdue_email_sent
+
+This prevents the same overdue notification from being sent repeatedly for the same request.
+
+----------------------------------------------------------------------
+EMAIL CONFIGURATION
+----------------------------------------------------------------------
+
+The application uses Gmail SMTP to send emails.
+
+In the Django configuration file, the following settings must be configured with the email account used by the company:
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "YOURMAIL@gmail.com"
+EMAIL_HOST_PASSWORD = "YOUR_GOOGLE_GENERATE_PASSWORD"
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+The following values must be replaced:
+
+YOURMAIL@gmail.com
+    → Gmail address used to send notifications.
+
+YOUR_GOOGLE_GENERATE_PASSWORD
+    → Google-generated App Password for the Gmail account.
+
+The personal Google account password should not be used directly when Google requires an App Password.
+
+To test email sending from Django:
+
+docker compose exec backend python manage.py shell
+
+Then:
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+send_mail(
+    "Test ASSET Management",
+    "This is a test",
+    settings.DEFAULT_FROM_EMAIL,
+    ["email@address.com"],
+    fail_silently=False,
+)
+
+If the command returns:
+
+1
+
+Django has successfully accepted the email for sending.
+
+----------------------------------------------------------------------
+SCHEDULER
+----------------------------------------------------------------------
+
+The scheduler runs in a separate Docker container.
+
+Its purpose is to execute scheduled tasks automatically.
+
+It is responsible, among other things, for regularly checking overdue requests.
+
+The configuration is located in:
+
+run_scheduler.sh
+
+The service is defined in docker-compose.yml:
+
+scheduler:
+    build:
+      context: ./Backend
+      dockerfile: dockerfile
+
+    command: sh /app/run_scheduler.sh
+
+The scheduler depends on PostgreSQL, Keycloak and the backend.
+
+If automatic emails are not working, check:
+
+- that the scheduler container is running;
+- that the SMTP configuration is correct;
+- that the employee has an email address;
+- that the return date has passed;
+- that the request still contains equipment that has not been returned.
+
+----------------------------------------------------------------------
+HISTORY
+----------------------------------------------------------------------
+
+The application also provides history tracking for operations performed on requests and equipment.
+
+The history makes it possible to track important changes and understand what happened to an equipment item or request.
+
+It can be used to check:
+
+- equipment allocations;
+- equipment returns;
+- modifications;
+- operations performed by administrators.
+
+This feature is particularly useful for maintaining equipment traceability.
+
+----------------------------------------------------------------------
+SEARCH
+----------------------------------------------------------------------
+
+The application provides search functionality to quickly find the required information.
+
+Search can be used to find:
+
+- an employee;
+- a request;
+- equipment;
+- a brand or model;
+- a serial number;
+- a category.
+
+The goal is to allow administrators to quickly find information without manually browsing through all records.
+
+----------------------------------------------------------------------
+FILTERS
+----------------------------------------------------------------------
+
+Filters are also available to reduce the displayed results.
+
+They make it easier to browse requests and equipment.
+
+Filters can be used to quickly display elements matching the selected criteria.
+
+Combining search and filters makes the application easier to use when the number of requests or equipment items becomes large.
+
+----------------------------------------------------------------------
+SETTINGS
+----------------------------------------------------------------------
+
+The Settings page allows administrators to manage several application settings.
+
+It contains several sections.
+
+Profile
+-------
+
+Administrators can modify their personal information.
+
+The information may include:
+
+- First Name
+- Last Name
+- Full Name
+- Email Address
+- Username
+- Department
+
+Security
+--------
+
+This section allows administrators to manage security-related account settings.
+
+It provides the functionality required to manage the user's account security.
+
+Administrators
+--------------
+
+This section allows administrators to manage application administrators.
+
+An administrator can add a new administrator directly from the interface.
+
+Keycloak is used to manage authentication.
+
+Stock
+-----
+
+This section contains the:
+
+Based on stock
+
+option.
+
+When enabled, the application takes the available stock into account when allocating equipment.
+
+This helps maintain consistency between equipment available in the stock and equipment assigned to employees.
+
+----------------------------------------------------------------------
+DATABASE
+----------------------------------------------------------------------
+
+PostgreSQL is used as the database management system.
+
+The main entities are:
+
+Admin
+    → administrator information.
+
+Request
+    → request information.
+
+RequestItem
+    → equipment associated with a request.
+
+Equipment
+    → equipment available in the stock.
+
+Category
+    → categories used to organize equipment.
+
+The main relationship is:
+
+Request
+   |
+   └── RequestItem
+          |
+          └── requested equipment information
+
+This allows a single request to contain multiple equipment items.
+
+----------------------------------------------------------------------
+DOCKER
+----------------------------------------------------------------------
+
+The application uses Docker Compose to run the different services.
+
+The main containers are:
+
+backend
+    → Django API
+
+frontend
+    → Vue.js application
+
+postgres
+    → PostgreSQL database
+
+keycloak
+    → authentication service
+
+scheduler
+    → automatic scheduled tasks
+
+The services are configured in:
+
+docker-compose.yml
+
+To start the application:
+
+docker compose up -d --build
+
+To check the containers:
+
+docker compose ps
+
+To view backend logs:
+
+docker compose logs backend
+
+To view scheduler logs:
+
+docker compose logs scheduler
+
+To view Keycloak logs:
+
+docker compose logs keycloak
+
+To view PostgreSQL logs:
+
+docker compose logs postgres
+
+----------------------------------------------------------------------
+TROUBLESHOOTING
+----------------------------------------------------------------------
+
+When a feature does not work, start by checking the logs of the relevant service.
+
+Frontend error
+    → Check the browser console and API requests.
+
+Backend error
+    → Check:
+
+    docker compose logs backend
+
+Scheduler error
+    → Check:
+
+    docker compose logs scheduler
+
+Keycloak error
+    → Check:
+
+    docker compose logs keycloak
+
+PostgreSQL error
+    → Check:
+
+    docker compose logs postgres
+
+To manually test the overdue request verification:
+
+docker compose exec backend python manage.py check_overdue_requests
+
+If an overdue request is detected and an email needs to be sent, the command displays a message indicating that the email was sent.
+
+----------------------------------------------------------------------
+DEVELOPMENT ON ANOTHER COMPUTER
+----------------------------------------------------------------------
+
+When a developer retrieves the project from Git, the project files and the Keycloak configuration must be available.
+
+The Keycloak configuration is stored in:
+
+keycloak/item-management-realm.json
+
+The developer must also verify the frontend and backend environment configuration.
+
+Sensitive information, especially SMTP passwords, must not be committed directly to Git.
+
+Each development or production environment should use its own configuration values.
+
+----------------------------------------------------------------------
+APPLICATION SUMMARY
+----------------------------------------------------------------------
+
+The administrator logs into the application through Keycloak.
+
+After authentication, the administrator accesses the dashboard and the different management features.
+
+The administrator can:
+
+- Manage equipment;
+- Create, edit and delete equipment;
+- Manage categories;
+- Add and delete categories;
+- View available quantities;
+- Create equipment requests;
+- Assign multiple equipment items to an employee;
+- Manage equipment returns;
+- Use stock-based management;
+- Search for requests and equipment;
+- Use filters;
+- View history;
+- Modify personal information;
+- Manage security settings;
+- Add administrators;
+- Receive automatic email notifications when equipment is not returned on time.
+
+The system is therefore designed to centralize IT equipment management, track equipment assigned to employees, monitor returns, maintain traceability, and simplify the daily work of administrators.
